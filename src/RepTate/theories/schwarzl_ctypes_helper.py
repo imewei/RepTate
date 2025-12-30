@@ -37,6 +37,7 @@ from ctypes import *
 import sys
 import os
 
+from RepTate.core.ctypes_loader import load_ctypes_library
 dir_path = os.path.dirname(
     os.path.realpath(__file__)
 )  # get the directory path of current file
@@ -46,10 +47,7 @@ if sys.maxsize > 2 ** 32:
 else:
     # 32-bit system
     lib_path = os.path.join(dir_path, "schwarzl_lib_%s_i686.so" % (sys.platform))
-try:
-    schwarzl_lib = CDLL(lib_path)
-except:
-    print("OS %s not recognized in Schwarzl CH module" % (sys.platform))
+schwarzl_lib = load_ctypes_library(lib_path, "Schwarzl library")
 
 schwarzl_gt = schwarzl_lib.schwarzl_gt
 schwarzl_gt.restype = None

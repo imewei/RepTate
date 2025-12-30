@@ -57,6 +57,7 @@ from PySide6.QtCore import QSize, QStandardPaths
 from PySide6.QtGui import QStandardItem, QFont, QIcon, QAction, QColor, QDoubleValidator
 from pathlib import Path
 import RepTate.tools.polymer_data as polymer_data
+from RepTate.tools import materials_db_io
 
 if getattr(sys, "frozen", False):
     # If the application is run as a bundle, the PyInstaller bootloader
@@ -66,33 +67,11 @@ if getattr(sys, "frozen", False):
 else:
     PATH = os.path.dirname(os.path.abspath(__file__))
 
-# The following two lines are temporary. They can be removed after the database is pickeld with RepTate.ttols.polymer_data instead of polymer_data
-# sys.path.append(os.path.dirname(os.path.realpath(__file__)))
-# dir_path = os.path.dirname(os.path.realpath(__file__))
-sys.path.append(PATH)
-materials_database = np.load(
-    os.path.join(PATH, "materials_database.npy"), allow_pickle=True
-).item()
+materials_database = materials_db_io.load_default_materials(PATH)
 
-# search user material database in the (old) location "HOME"
 home_path = str(Path.home())
-file_user_database_old = os.path.join(home_path, "user_database.npy")
-if os.path.exists(file_user_database_old):
-    materials_user_database_old = np.load(
-        file_user_database_old, allow_pickle=True
-    ).item()
-else:
-    materials_user_database_old = {}
-
-# search user material database in the (new) location "AppData"
 AppData_path = QStandardPaths.writableLocation(QStandardPaths.AppDataLocation)
-file_user_database = os.path.join(AppData_path, "user_database.npy")
-if os.path.exists(file_user_database):
-    materials_user_database = np.load(file_user_database, allow_pickle=True).item()
-else:
-    materials_user_database = {}
-
-materials_user_database.update(materials_user_database_old)
+materials_user_database = materials_db_io.load_user_materials(AppData_path, home_path)
 materials_db = [materials_user_database, materials_database]
 
 
@@ -634,8 +613,8 @@ class ToolMaterialsDatabase(QTool):
 
     def save_usermaterials(self):
         AppData_path = QStandardPaths.writableLocation(QStandardPaths.AppDataLocation)
-        file_user_database = os.path.join(AppData_path, "user_database.npy")
-        np.save(file_user_database, materials_user_database)
+        file_user_database = os.path.join(AppData_path, "user_database.json")
+        materials_db_io.write_materials_json(materials_user_database, file_user_database)
         msg = "Saved user database in '%s'" % file_user_database
         QMessageBox.information(self, "Saved", msg)
 

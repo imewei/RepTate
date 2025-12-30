@@ -47,6 +47,7 @@ from PySide6.QtWidgets import QApplication, QMessageBox
 from PySide6.QtGui import QDesktopServices, QIcon, QKeySequence, QShortcut
 from PySide6.QtCore import QUrl, Qt, QCoreApplication
 from RepTate.core.DataTable import DataTable
+from RepTate.core.logging_config import setup_logging
 
 DataTable.MAX_NUM_SERIES = 10
 from RepTate.core.CmdBase import CmdBase, CalcMode
@@ -136,6 +137,7 @@ def start_UV(argv):
         loglevel = logging.DEBUG
     else:
         loglevel = logging.INFO
+    setup_logging(level=loglevel)
 
     QApplication.setStyle("Fusion")  # comment that line for a native look
     # for a list of available styles: "from PySide6.QtWidgets import QStyleFactory; print(QStyleFactory.keys())"

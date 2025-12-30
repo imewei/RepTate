@@ -38,6 +38,8 @@ import ctypes as ct
 import sys
 import os
 
+from RepTate.core.ctypes_loader import load_ctypes_library
+
 dir_path = os.path.dirname(
     os.path.realpath(__file__)
 )  # get the directory path of current file
@@ -47,10 +49,7 @@ if sys.maxsize > 2 ** 32:
 else:
     # 32-bit system
     lib_path = os.path.join(dir_path, "react_lib_%s_i686.so" % (sys.platform))
-try:
-    react_lib = ct.CDLL(lib_path)
-except:
-    print("OS %s not recognized in React CH module" % (sys.platform))
+react_lib = load_ctypes_library(lib_path, "React CH library")
 
 ###############
 # polybits.c
@@ -596,4 +595,3 @@ def prio_and_senio(parent_theory, f, ndist, do_architecture):
     tt.extra_tables["proba_prio"] = np.zeros((max_prio, 2))
     tt.extra_tables["proba_prio"][:, 0] = np.arange(1, max_prio + 1)
     tt.extra_tables["proba_prio"][:, 1] = proba_prio[:]
-

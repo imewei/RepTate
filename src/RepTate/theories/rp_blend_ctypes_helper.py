@@ -2,10 +2,11 @@
 Define the C-variables and functions from the C-files that are needed in Python
 """
 import numpy as np
-from ctypes import c_double, CDLL
+from ctypes import c_double
 import sys
 import os
 
+from RepTate.core.ctypes_loader import load_ctypes_library
 dir_path = os.path.dirname(
     os.path.realpath(__file__)
 )  # get the directory path of current file
@@ -15,10 +16,7 @@ if sys.maxsize > 2 ** 32:
 else:
     # 32-bit system
     lib_path = os.path.join(dir_path, "rp_blend_lib_%s_i686.so" % (sys.platform))
-try:
-    rp_blend_lib = CDLL(lib_path)
-except:
-    print("OS %s not recognized in Rouse CH module" % (sys.platform))
+rp_blend_lib = load_ctypes_library(lib_path, "RP blend library")
 
 derivs_rp_blend_shear = rp_blend_lib.derivs_rp_blend_shear
 derivs_rp_blend_shear.restype = None

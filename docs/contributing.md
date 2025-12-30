@@ -22,3 +22,4 @@
 
 - Run the test suite before submitting changes.
 - Run validation scripts for numerical routines when touching core computation.
+- Check `docs/logging.md` if you need to adjust log locations or levels.

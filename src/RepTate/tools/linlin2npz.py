@@ -56,4 +56,8 @@ data = []
 for k in p:
     data.append(np.loadtxt(flist[k]))
 
-np.savez_compressed("linlin.npz", Z=Z, cnu=cnu, data=data)
+payload = {"Z": Z, "cnu": cnu}
+for index, table in enumerate(data):
+    payload[f"data_{index:04d}"] = table
+
+np.savez_compressed("linlin_v2.npz", **payload)

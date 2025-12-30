@@ -36,13 +36,11 @@ Reads the linlin data from the compact *.npz file
 
 """
 import os
-import numpy as np
+from RepTate.theories.linlin_io import load_linlin_data
 
 dir_path = os.path.dirname(os.path.realpath(__file__))
-f = np.load(os.path.join(dir_path, "..", "theories", "linlin.npz"), allow_pickle=True)
-Z = f["Z"]
-cnu = f["cnu"]
-data = f["data"]
+theory_path = os.path.join(dir_path, "..", "theories")
+Z, cnu, data = load_linlin_data(theory_path)
 
 Z0 = 100
 cnu0 = 1.0

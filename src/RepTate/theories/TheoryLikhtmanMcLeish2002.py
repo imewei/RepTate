@@ -121,10 +121,7 @@ class TheoryLikhtmanMcLeish2002(QTheory):
         )
 
         dir_path = os.path.dirname(os.path.realpath(__file__))
-        f = np.load(os.path.join(dir_path, "linlin.npz"), allow_pickle=True)
-        self.Zarray = f["Z"]
-        self.cnuarray = f["cnu"]
-        self.data = f["data"]
+        self.Zarray, self.cnuarray, self.data = load_linlin_data(dir_path)
 
         if not self.get_material_parameters():
             # Estimate initial values of the theory
@@ -295,3 +292,4 @@ class TheoryLikhtmanMcLeish2002(QTheory):
                 ]
             )
         self.Qprint(tab_data)
+from RepTate.theories.linlin_io import load_linlin_data

@@ -42,7 +42,7 @@ import os
 from os.path import dirname, join, abspath, join, isfile, basename
 from PySide6.QtUiTools import loadUiType
 from PySide6.QtGui import QIcon, QDesktopServices, QTextCursor
-from PySide6.QtCore import QUrl, Qt, QSize, QStandardPaths
+from PySide6.QtCore import QUrl, Qt, QSize
 from PySide6.QtWidgets import (
     QApplication,
     QInputDialog,
@@ -58,6 +58,7 @@ import RepTate
 from RepTate.core.CmdBase import CmdBase, CalcMode
 
 from RepTate.core.File import File
+from RepTate.core.logging_config import setup_logging, get_log_dir
 
 # from RepTate.gui.QAboutReptate import AboutWindow
 from RepTate.applications.ApplicationTTS import ApplicationTTS
@@ -79,7 +80,6 @@ from collections import OrderedDict
 import numpy as np
 import time
 import logging
-import logging.handlers
 
 
 if getattr(sys, "frozen", False):
@@ -167,34 +167,7 @@ class QApplicationManager(QMainWindow, Ui_MainWindow):
         self.available_applications[ApplicationLAOS.appname] = ApplicationLAOS
 
         # LOGGING STUFF
-        # Setup AppName and platform-dependent path to AppData
-        path_to_AppData = QStandardPaths.writableLocation(
-            QStandardPaths.AppDataLocation
-        )
-        try:
-            os.mkdir(path_to_AppData)
-        except FileExistsError:
-            pass
-
-        self.logger = logging.getLogger("RepTate")
-        self.logger.setLevel(loglevel)
-        # home_path = str(Path.home())
-        logfile = os.path.join(path_to_AppData, "RepTate.log")
-        fh = logging.handlers.RotatingFileHandler(
-            logfile, maxBytes=100000, backupCount=5
-        )
-        fh.setLevel(loglevel)
-        ch = logging.StreamHandler()
-        ch.setLevel(logging.WARNING)
-        # create formatter and add it to the handlers
-        formatter = logging.Formatter(
-            "%(asctime)s %(name)s %(levelname)s: %(message)s", "%Y%m%d %H%M%S"
-        )
-        fh.setFormatter(formatter)
-        ch.setFormatter(formatter)
-        # add the handlers to the logger
-        self.logger.addHandler(fh)
-        self.logger.addHandler(ch)
+        self.logger = setup_logging(level=loglevel, log_dir=get_log_dir())
         self.logger.debug("New ApplicationManager")
 
         if CmdBase.calcmode == CalcMode.singlethread:

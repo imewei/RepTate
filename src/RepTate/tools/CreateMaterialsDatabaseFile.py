@@ -35,9 +35,9 @@
 Module that creates the basic Materials database data.
 
 """
-import numpy as np
 import os
 from polymer_data import polymer
+import materials_db_io
 
 polymerdict = {}
 polymerdict["PEP"] = polymer(
@@ -149,5 +149,9 @@ polymerdict["hPBd"] = polymer(
 polymeruserdict = {}
 
 dir_path = os.path.dirname(os.path.realpath(__file__))
-np.save(os.path.join(dir_path, "materials_database.npy"), polymerdict)
-np.save(os.path.join(dir_path, "user_database.npy"), polymeruserdict)
+materials_db_io.write_materials_json(
+    polymerdict, os.path.join(dir_path, "materials_database.json")
+)
+materials_db_io.write_materials_json(
+    polymeruserdict, os.path.join(dir_path, "user_database.json")
+)

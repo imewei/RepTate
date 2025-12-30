@@ -43,6 +43,7 @@ import numpy as np
 import logging
 
 from RepTate.core.CmdBase import CmdBase, CalcMode
+from RepTate.core.logging_config import setup_logging
 #from RepTate.gui.QApplicationManager import QApplicationManager
 
 from PySide6.QtWidgets import QApplication
@@ -137,6 +138,7 @@ def start_RepTate(argv):
         loglevel = logging.DEBUG
     else:
         loglevel = logging.INFO
+    setup_logging(level=loglevel)
 
     QApplication.setStyle("Fusion")  # comment that line for a native look
     # for a list of available styles: "from PySide6.QtWidgets import QStyleFactory; print(QStyleFactory.keys())"

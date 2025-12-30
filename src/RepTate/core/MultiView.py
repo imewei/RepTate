@@ -36,6 +36,7 @@ Organise the mmultiple Matplotlib views
 
 """
 import sys
+import logging
 import enum
 import math
 from RepTate.core.CmdBase import CmdBase
@@ -51,6 +52,8 @@ import matplotlib.pyplot as plt
 # from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
 from matplotlib.backends.backend_qtagg import FigureCanvas
 import matplotlib.gridspec as gridspec
+
+logger = logging.getLogger(__name__)
 
 
 class PlotOrganizationType(enum.Enum):
@@ -282,14 +285,14 @@ class MultiView(QWidget):
         for i in range(nplot_old, self.nplots):
             try:
                 plt.subplot(self.axarr[i])
-            except:
-                pass
+            except Exception as exc:
+                logger.debug("Failed to add subplot %s: %s", i, exc, exc_info=True)
         # remove axes from plt
         for i in range(self.nplots, nplot_old):
             try:
                 plt.delaxes(self.axarr[i])
-            except:
-                pass
+            except Exception as exc:
+                logger.debug("Failed to remove subplot %s: %s", i, exc, exc_info=True)
         for ds in self.parent_application.datasets.values():
             ds.nplots = nplots
         self.parent_application.update_all_ds_plots()

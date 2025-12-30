@@ -2,10 +2,11 @@
 Define the C-variables and functions from the C-files that are needed in Python
 """
 import numpy as np
-from ctypes import c_double, c_int, c_bool, CDLL
+from ctypes import c_double, c_int, c_bool
 import sys
 import os
 
+from RepTate.core.ctypes_loader import load_ctypes_library
 dir_path = os.path.dirname(
     os.path.realpath(__file__)
 )  # get the directory path of current file
@@ -15,10 +16,7 @@ if sys.maxsize > 2 ** 32:
 else:
     # 32-bit system
     lib_path = os.path.join(dir_path, "dtd_lib_%s_i686.so" % (sys.platform))
-try:
-    dtd_lib = CDLL(lib_path)
-except:
-    print("OS %s not recognized in DTD CH" % (sys.platform))
+dtd_lib = load_ctypes_library(lib_path, "DTD library")
 
 dynamic_tube_dilution_freq = dtd_lib.dynamic_tube_dilution_freq
 dynamic_tube_dilution_freq.restype = c_bool

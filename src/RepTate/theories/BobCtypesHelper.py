@@ -35,7 +35,6 @@ Define the C-variables and functions from the C-files that are needed in Python
 """
 from ctypes import (
     CFUNCTYPE,
-    CDLL,
     c_double,
     c_int,
     c_char_p,
@@ -48,6 +47,7 @@ from ctypes import (
 import sys
 import os
 
+from RepTate.core.ctypes_loader import load_ctypes_library
 if sys.platform == "darwin" or sys.platform == "linux":
     CHARCODE = "utf-8"
 else:
@@ -86,10 +86,7 @@ class BobCtypesHelper:
         else:
             # 32-bit system
             self.lib_path = os.path.join(dir_path, "bob2p5_lib_%s_i686.so" % (sys.platform))
-        try:
-            self.bob_lib = CDLL(self.lib_path)
-        except:
-            print('Could not load shared library "%s"' % (self.lib_path))
+        self.bob_lib = load_ctypes_library(self.lib_path, "BoB library")
         # link the C function to Python
         self.link_c_functions()
 
