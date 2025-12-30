@@ -42,13 +42,13 @@ import time
 import getpass
 import ast
 import numpy as np
-from scipy.optimize import (
-    curve_fit,
+from RepTate.core.fitting.nlsq_optimize import (
     basinhopping,
-    dual_annealing,
-    differential_evolution,
-    shgo,
     brute,
+    curve_fit,
+    differential_evolution,
+    dual_annealing,
+    shgo,
 )
 from scipy.stats.distributions import t
 from scipy.interpolate import interp1d
@@ -1068,6 +1068,13 @@ class QTheory(QWidget, Ui_TheoryTab):
                 self.Qprint(msg)
                 self.is_fitting = False
                 return
+
+        if self.mintype != MinimizationMethod.ls:
+            self.Qprint(
+                "Global optimization methods are not available in the NLSQ "
+                "modernization path; falling back to least-squares."
+            )
+            self.mintype = MinimizationMethod.ls
 
         if self.mintype == MinimizationMethod.ls:
             self.Qprint("<b>Non-linear Least-squares</b>")

@@ -40,7 +40,7 @@ import time
 import getpass
 import numpy as np
 from numpy import interp
-from scipy.optimize import minimize, curve_fit
+from RepTate.core.fitting.nlsq_optimize import curve_fit, minimize
 from scipy.stats import distributions
 from RepTate.core.Parameter import Parameter, ParameterType, OptType
 from RepTate.gui.QTheory import QTheory

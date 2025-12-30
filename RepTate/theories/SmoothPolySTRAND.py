@@ -7,7 +7,7 @@ Created on Fri Nov 30 13:15:57 2018
 
 import math
 
-from scipy import optimize
+from RepTate.core.fitting import nlsq_optimize as optimize
 import numpy as np
 
 

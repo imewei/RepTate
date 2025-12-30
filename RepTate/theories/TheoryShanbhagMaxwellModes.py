@@ -45,7 +45,7 @@ from RepTate.gui.QTheory import QTheory
 from PySide6.QtWidgets import QToolBar, QToolButton, QMenu, QMessageBox, QFileDialog
 from PySide6.QtCore import QSize
 from PySide6.QtGui import QIcon
-from scipy.optimize import nnls, minimize, least_squares
+from RepTate.core.fitting.nlsq_optimize import least_squares, minimize, nnls
 from scipy.interpolate import interp1d
 from scipy.integrate import cumtrapz, quad
 import enum

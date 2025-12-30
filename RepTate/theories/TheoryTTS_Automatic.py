@@ -41,7 +41,7 @@ import getpass
 import numpy as np
 from os.path import join, isdir
 from numpy import interp
-from scipy.optimize import minimize, curve_fit
+from RepTate.core.fitting.nlsq_optimize import curve_fit, minimize
 from scipy.stats import distributions
 import RepTate
 from RepTate.core.Parameter import Parameter, ParameterType, OptType

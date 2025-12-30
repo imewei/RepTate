@@ -35,7 +35,7 @@
 FindPeaks file for creating a new Tool
 """
 import numpy as np
-from scipy.optimize import curve_fit
+from RepTate.core.fitting.nlsq_optimize import curve_fit
 from RepTate.core.Parameter import Parameter, ParameterType
 from RepTate.gui.QTool import QTool
 from PySide6.QtGui import QIcon
