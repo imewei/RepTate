@@ -42,6 +42,7 @@ import io
 import math
 import re
 import traceback
+from pathlib import Path
 from numpy import *
 from numpy.random import *
 import numpy as np
@@ -605,6 +606,31 @@ class QApplicationWindow(QMainWindow, Ui_AppWindow):
         self.qtabbar = self.TooltabWidget.tabBar()
         vblayout2.addWidget(self.TooltabWidget)
         self.tool_panel_widget.setLayout(vblayout2)
+
+        # JAX-first computation integration (UI boundary)
+        from RepTate.core.compute.service_api import ComputeService
+        from RepTate.gui.controllers.fit_controller import FitController
+        from RepTate.gui.controllers.inference_controller import InferenceController
+        from RepTate.gui.controllers.export_controller import ExportController
+        from RepTate.gui.views.fit_view import FitView
+        from RepTate.gui.views.inference_view import InferenceView
+        from RepTate.gui.views.summary_view import SummaryView
+        from RepTate.gui.views.plot_views import PlotViews
+
+        results_dir = Path(RepTate.root_dir) / "data" / "results"
+        self.compute_service = ComputeService(results_dir)
+        self.fit_controller = FitController(self.compute_service)
+        self.inference_controller = InferenceController(self.compute_service)
+        self.export_controller = ExportController()
+        self.fit_view = FitView(self)
+        self.inference_view = InferenceView(self)
+        self.summary_view = SummaryView(self)
+        self.plot_views = PlotViews(self)
+
+        self.TooltabWidget.addTab(self.fit_view, "Fit")
+        self.TooltabWidget.addTab(self.inference_view, "Inference")
+        self.TooltabWidget.addTab(self.summary_view, "Summary")
+        self.TooltabWidget.addTab(self.plot_views, "Plots")
 
         # Data inspector and Tool panels separated by spliter
         spliter = QSplitter(QtCore.Qt.Vertical)
