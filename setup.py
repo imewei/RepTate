@@ -1,6 +1,5 @@
 import os
 from setuptools import setup, find_packages
-import versioneer
 import functools
 import glob
 
@@ -47,8 +46,7 @@ with open("README.rst", "r") as fh:
 
 setup(
     name="RepTate",
-    version=versioneer.get_version(),
-    cmdclass=versioneer.get_cmdclass(),
+    use_scm_version=True,
     description="Rheology of Entangled Polymers: Toolkit for the Analysis of Theory and Experiment",
     long_description=long_description,
     long_description_content_type="text/x-rst",

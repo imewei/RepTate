@@ -3,10 +3,15 @@ import os
 import traceback
 import logging
 import numpy as np
-from ._version import get_versions
+try:
+    from importlib.metadata import version as _pkg_version
+except ImportError:  # pragma: no cover - Python <3.8 fallback
+    from importlib_metadata import version as _pkg_version
 
-__version__ = get_versions()["version"]
-del get_versions
+try:
+    __version__ = _pkg_version("RepTate")
+except Exception:
+    __version__ = "0.0.0"
 
 # RepTate root directory where the "data/" and "docs/" folders are located
 if getattr(sys, "frozen", False):

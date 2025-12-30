@@ -1,0 +1,121 @@
+# RepTate Package Configuration
+# =============================
+#
+# JAX-first, full-precision numerical stack with optional accelerator support.
+# GPU users: install appropriate jax/jaxlib wheels for local CUDA.
+
+[build-system]
+requires = ["setuptools>=68.0", "wheel", "setuptools-scm>=8"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "RepTate"
+dynamic = ["version"]
+description = "Rheology of Entangled Polymers: Toolkit for the Analysis of Theory and Experiment"
+readme = "README.rst"
+license = {file = "Reptate_license.txt"}
+authors = [
+    {name = "Jorge Ramirez"},
+    {name = "Victor Boudara"},
+]
+maintainers = [
+    {name = "Jorge Ramirez"},
+    {name = "Victor Boudara"},
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Physics",
+    "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Operating System :: OS Independent",
+]
+requires-python = ">=3.12"
+
+dependencies = [
+    # Core scientific computing
+    "numpy>=2.2.0",
+    "scipy>=1.14.0",
+    "matplotlib>=3.9.0",
+
+    # JAX ecosystem (CPU-only by default)
+    "jax>=0.8.0",
+    "jaxlib>=0.8.0",
+    "optimistix>=0.0.6",
+
+    # Curve fitting (JAX-based)
+    "nlsq>=0.4.1",
+
+    # Bayesian inference and diagnostics
+    "numpyro>=0.14.0",
+    "arviz>=0.18.0",
+
+    # Interpolation helpers (JAX-native)
+    "interpax",
+
+    # Data I/O
+    "openpyxl>=3.1.0,<4.0.0",
+    "xlrd>=2.0.0,<3.0.0",
+
+    # Utilities
+    "psutil>=6.0.0",
+    "packaging>=24.0",
+    "platformdirs>=3.0.0",
+
+    # GUI
+    "PySide6>=6.6.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-cov>=5.0.0",
+    "pytest-qt>=4.4.0",
+    "pytest-xdist>=3.5.0",
+    "hypothesis>=6.100.0",
+    "black>=24.0.0",
+    "ruff>=0.5.0",
+    "mypy>=1.10.0",
+    "pre-commit>=3.7.0",
+    "ipython>=8.26.0",
+    "jupyter>=1.0.0",
+    "build>=1.2.0",
+    "twine>=6.0.0",
+]
+docs = [
+    "sphinx>=8.0",
+    "myst-parser>=4.0",
+    "sphinxcontrib-bibtex>=2.6",
+    "linkify-it-py>=2.0",
+]
+all = [
+    "RepTate[dev,docs]",
+]
+
+[project.scripts]
+RepTate = "RepTate.__main__:main"
+MatDB = "RepTate.MatDB:main"
+UV = "RepTate.UV:main"
+
+[project.urls]
+"Homepage" = "http://github.com/jorge-ramirez-upm/RepTate"
+"Bug Tracker" = "https://github.com/jorge-ramirez-upm/RepTate/issues"
+"Source Code" = "https://github.com/jorge-ramirez-upm/RepTate"
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["RepTate", "RepTate.*"]
+exclude = ["tests*", "docs*"]
+
+[tool.setuptools.package-data]
+"RepTate" = ["*.ui", "*.qrc", "*.npy", "*.so", "*.npz"]
+
+[tool.setuptools_scm]
+version_scheme = "release-branch-semver"
+local_scheme = "no-local-version"
+tag_regex = "^v(?P<version>\\d+\\.\\d+\\.\\d+)$"
