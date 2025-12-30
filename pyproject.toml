@@ -106,9 +106,10 @@ UV = "RepTate.UV:main"
 
 [tool.setuptools]
 include-package-data = true
+package-dir = {"" = "src"}
 
 [tool.setuptools.packages.find]
-where = ["."]
+where = ["src"]
 include = ["RepTate", "RepTate.*"]
 exclude = ["tests*", "docs*"]
 
