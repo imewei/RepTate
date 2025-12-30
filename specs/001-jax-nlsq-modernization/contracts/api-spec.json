@@ -1,0 +1,173 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "RepTate Analysis Service",
+    "version": "1.0.0",
+    "description": "Logical API boundary between UI and computation services for datasets, NLSQ fitting, and inference with CPU fallback."
+  },
+  "paths": {
+    "/datasets": {
+      "post": {
+        "summary": "Import dataset",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/DatasetImport" }
+            }
+          }
+        },
+        "responses": {"200": {"description": "Dataset imported", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Dataset"}}}}}
+      },
+      "get": {
+        "summary": "List datasets",
+        "responses": {"200": {"description": "Datasets", "content": {"application/json": {"schema": {"type": "array", "items": {"$ref": "#/components/schemas/Dataset"}}}}}}
+      }
+    },
+    "/models": {
+      "get": {
+        "summary": "List supported models",
+        "responses": {"200": {"description": "Models", "content": {"application/json": {"schema": {"type": "array", "items": {"$ref": "#/components/schemas/Model"}}}}}}
+      }
+    },
+    "/fits": {
+      "post": {
+        "summary": "Run deterministic fit",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {"$ref": "#/components/schemas/FitRequest"}
+            }
+          }
+        },
+        "responses": {"200": {"description": "Fit result", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/FitResult"}}}}}
+      }
+    },
+    "/inference": {
+      "post": {
+        "summary": "Start Bayesian inference",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {"$ref": "#/components/schemas/InferenceRequest"}
+            }
+          }
+        },
+        "responses": {"200": {"description": "Posterior result", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/PosteriorResult"}}}}}
+      }
+    },
+    "/inference/{inferenceId}/resume": {
+      "post": {
+        "summary": "Resume Bayesian inference",
+        "parameters": [
+          {"name": "inferenceId", "in": "path", "required": true, "schema": {"type": "string"}}
+        ],
+        "responses": {"200": {"description": "Posterior result", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/PosteriorResult"}}}}}
+      }
+    },
+    "/exports": {
+      "post": {
+        "summary": "Export plots and results",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {"$ref": "#/components/schemas/ExportRequest"}
+            }
+          }
+        },
+        "responses": {"200": {"description": "Export job", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ExportResult"}}}}}
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "DatasetImport": {
+        "type": "object",
+        "properties": {
+          "name": {"type": "string"},
+          "source_location": {"type": "string"},
+          "metadata": {"type": "object"}
+        },
+        "required": ["name", "source_location"]
+      },
+      "Dataset": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "name": {"type": "string"},
+          "metadata": {"type": "object"}
+        },
+        "required": ["id", "name"]
+      },
+      "Model": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "name": {"type": "string"},
+          "parameter_schema": {"type": "object"}
+        },
+        "required": ["id", "name"]
+      },
+      "FitRequest": {
+        "type": "object",
+        "properties": {
+          "dataset_id": {"type": "string"},
+          "model_id": {"type": "string"},
+          "initial_parameters": {"type": "object"}
+        },
+        "required": ["dataset_id", "model_id"]
+      },
+      "FitResult": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "dataset_id": {"type": "string"},
+          "model_id": {"type": "string"},
+          "parameter_estimates": {"type": "object"},
+          "diagnostics": {"type": "object"},
+          "residuals": {"type": "array", "items": {"type": "number"}}
+        },
+        "required": ["id", "dataset_id", "model_id", "parameter_estimates"]
+      },
+      "InferenceRequest": {
+        "type": "object",
+        "properties": {
+          "fit_result_id": {"type": "string"},
+          "warm_start": {"type": "boolean"}
+        },
+        "required": ["fit_result_id"]
+      },
+      "PosteriorResult": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "fit_result_id": {"type": "string"},
+          "sample_traces": {"type": "object"},
+          "summary_statistics": {"type": "object"}
+        },
+        "required": ["id", "fit_result_id", "sample_traces"]
+      },
+      "ExportRequest": {
+        "type": "object",
+        "properties": {
+          "dataset_id": {"type": "string"},
+          "fit_result_id": {"type": "string"},
+          "posterior_result_id": {"type": "string"},
+          "export_targets": {"type": "array", "items": {"type": "string"}}
+        },
+        "required": ["export_targets"]
+      },
+      "ExportResult": {
+        "type": "object",
+        "properties": {
+          "status": {"type": "string"},
+          "artifacts": {"type": "array", "items": {"type": "string"}}
+        },
+        "required": ["status"]
+      }
+    }
+  }
+}

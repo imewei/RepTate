@@ -10,6 +10,13 @@ RepTate Rheology Software
 - Free and open source
 - License GPLv3+
 
+Modern computation stack
+------------------------
+
+- JAX-first numerical kernels with optional accelerator support
+- NLSQ-based curve fitting for deterministic optimization
+- NumPyro NUTS integration path for Bayesian inference
+
 More Info
 ----------
 
@@ -30,4 +37,3 @@ Boudara V.A.H, Daniel J. Read and Jorge Ramírez, "RepTate rheology software: To
 .. image:: docs/source/images/RepTate_React.png
     :width: 400pt
     :align: center
-
