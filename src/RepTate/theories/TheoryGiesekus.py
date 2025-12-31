@@ -205,23 +205,52 @@ class TheoryGiesekus(QTheory):
         )
 
     def handle_spinboxValueChanged(self, value):
+        """Handle changes to the number of stretching modes spinbox.
+
+        Updates the nstretch parameter and triggers theory recalculation if
+        autocalculate is enabled. Ensures nstretch does not exceed nmodes.
+
+        Args:
+            value (int): New number of stretching modes selected by user.
+        """
         nmodes = self.parameters["nmodes"].value
         self.set_param_value("nstretch", min(nmodes, value))
         if self.autocalculate:
             self.parent_dataset.handle_actionCalculate_Theory()
 
     def select_shear_flow(self):
+        """Select shear flow mode and update toolbar button.
+
+        Sets the flow mode to shear and updates the toolbar button icon
+        to indicate shear flow geometry is active.
+        """
         self.flow_mode = FlowMode.shear
         self.tbutflow.setDefaultAction(self.shear_flow_action)
 
     def select_extensional_flow(self):
+        """Select extensional flow mode and update toolbar button.
+
+        Sets the flow mode to uniaxial extension and updates the toolbar
+        button icon to indicate extensional flow geometry is active.
+        """
         self.flow_mode = FlowMode.uext
         self.tbutflow.setDefaultAction(self.extensional_flow_action)
 
     def get_modes_reptate(self):
+        """Get Maxwell modes from another RepTate theory.
+
+        Calls the parent class method to copy Maxwell modes (G and tau values)
+        from another theory in the current application, typically from a linear
+        viscoelastic analysis.
+        """
         self.Qcopy_modes()
 
     def edit_modes_window(self):
+        """Open dialog window to manually edit Maxwell mode parameters.
+
+        Displays a table dialog allowing user to edit relaxation times (tau) and
+        moduli (G) for all modes. Updates theory parameters if user accepts changes.
+        """
         times, G, success = self.get_modes()
         if not success:
             self.logger.warning("Could not get modes successfully")
@@ -250,6 +279,11 @@ class TheoryGiesekus(QTheory):
                 self.handle_actionCalculate_Theory()
 
     def plot_modes_graph(self):
+        """Plot Maxwell modes spectrum (not implemented).
+
+        Placeholder for future implementation of graphical visualization
+        of the relaxation time spectrum.
+        """
         pass
 
     def init_flow_mode(self):
@@ -265,7 +299,14 @@ class TheoryGiesekus(QTheory):
             self.flow_mode = FlowMode.shear  # default mode: shear
 
     def get_modes(self):
-        """Get the values of Maxwell Modes from this theory"""
+        """Get the values of Maxwell Modes from this theory.
+
+        Returns:
+            tuple: Three-element tuple containing:
+                - ndarray: Relaxation times (tau) for all modes
+                - ndarray: Moduli (G) for all modes
+                - bool: Success flag (always True)
+        """
         nmodes = self.parameters["nmodes"].value
         tau = np.zeros(nmodes)
         G = np.zeros(nmodes)
@@ -275,7 +316,15 @@ class TheoryGiesekus(QTheory):
         return tau, G, True
 
     def set_modes(self, tau, G):
-        """Set the values of Maxwell Modes from another theory"""
+        """Set the values of Maxwell Modes from another theory.
+
+        Args:
+            tau (array-like): Relaxation times for each mode.
+            G (array-like): Moduli for each mode.
+
+        Returns:
+            bool: True if modes were set successfully.
+        """
         nmodes = len(tau)
         self.set_param_value("nmodes", nmodes)
         self.set_param_value("nstretch", nmodes)
@@ -287,7 +336,17 @@ class TheoryGiesekus(QTheory):
 
     def n1_uext(self, p, times):
         """Upper Convected Maxwell model in uniaxial extension.
-        Returns N1 = (XX -YY) component of stress tensor"""
+
+        Analytical solution for UCM model in extensional flow, used for
+        non-stretching modes.
+
+        Args:
+            p (list): Parameters [unused, G, tauD, extension_rate].
+            times (ndarray): Time values for evaluation.
+
+        Returns:
+            ndarray: First normal stress difference N1 = (σxx - σyy).
+        """
         _, G, tauD, ed = p
         w = tauD * ed
         sxx = (1 - 2 * w * np.exp(-(1 - 2 * w) * times / tauD)) / (1 - 2 * w)
@@ -297,7 +356,17 @@ class TheoryGiesekus(QTheory):
 
     def sigma_xy_shear(self, p, times):
         """Upper Convected Maxwell model in shear.
-        Returns XY component of stress tensor"""
+
+        Analytical solution for UCM model in shear flow, used for
+        non-stretching modes.
+
+        Args:
+            p (list): Parameters [unused, G, tauD, shear_rate].
+            times (ndarray): Time values for evaluation.
+
+        Returns:
+            ndarray: Shear stress component σxy.
+        """
         _, G, tauD, gd = p
 
         return G * gd * tauD * (1 - np.exp(-times / tauD))
@@ -316,7 +385,19 @@ class TheoryGiesekus(QTheory):
         )
 
     def sigmadot_shear(self, sigma, times, p):
-        """Giesekus model in shear"""
+        """Giesekus constitutive equation in shear flow.
+
+        Computes time derivatives of stress components for ODE integration.
+        Supports reading time-dependent shear rate from file.
+
+        Args:
+            sigma (list): Current stress state [σxx, σyy, σxy].
+            times (float): Current time value.
+            p (list): Parameters [alpha, G, tau, shear_rate].
+
+        Returns:
+            list: Time derivatives [dσxx/dt, dσyy/dt, dσxy/dt].
+        """
         if self.stop_theory_flag:
             raise EndComputationRequested
         alpha, _, tau, gdot = p
@@ -345,7 +426,19 @@ class TheoryGiesekus(QTheory):
         return [dsxx, dsyy, dsxy]
 
     def sigmadot_uext(self, sigma, times, p):
-        """Giesekus model in uniaxial extension"""
+        """Giesekus constitutive equation in uniaxial extension.
+
+        Computes time derivatives of stress components for ODE integration.
+        Supports reading time-dependent extension rate from file.
+
+        Args:
+            sigma (list): Current stress state [σxx, σyy].
+            times (float): Current time value.
+            p (list): Parameters [alpha, G, tau, extension_rate].
+
+        Returns:
+            list: Time derivatives [dσxx/dt, dσyy/dt].
+        """
         if self.stop_theory_flag:
             raise EndComputationRequested
         alpha, _, tau, edot = p
@@ -405,7 +498,15 @@ class TheoryGiesekus(QTheory):
         return [dsxx, dsyy, dsxy]
 
     def calculate_giesekus(self, f=None):
-        """Calculate Giesekus"""
+        """Calculate Giesekus model predictions for a file.
+
+        Solves the Giesekus constitutive equation using RK4 integration for
+        stretching modes and analytical UCM solution for non-stretching modes.
+        Handles both shear and extensional flow geometries.
+
+        Args:
+            f (DataFile): File object containing flow data and parameters.
+        """
         ft = f.data_table
         tt = self.tables[f.file_name_short]
         tt.num_columns = ft.num_columns
@@ -505,7 +606,19 @@ class TheoryGiesekus(QTheory):
                 tt.data[:, 1] += self.sigma_xy_shearLAOS(p, ft.data[:, 0])
 
     def set_param_value(self, name, value):
-        """Set value of a theory parameter"""
+        """Set value of a theory parameter.
+
+        Handles special logic for changing nmodes, including updating the
+        spinbox range and creating/deleting mode parameters as needed.
+
+        Args:
+            name (str): Parameter name to set.
+            value: New value for the parameter.
+
+        Returns:
+            tuple: (message, success) where message is empty string and
+                success is True if parameter was set successfully.
+        """
         if name == "nmodes":
             oldn = self.parameters["nmodes"].value
             self.spinbox.setMaximum(int(value))

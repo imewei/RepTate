@@ -20,6 +20,25 @@ def _minimize_scalar(fun, bounds, args=()):
 
 
 def wfun(phi, Df, P, B, NS):
+    """Calculate weight distribution of strand components in smooth polydisperse model.
+
+    Computes the weight fractions w_i of different strand length components in the
+    polydisperse smooth strand system. The weights depend on volume fractions phi,
+    differential free energies Df, alignment parameter P, normalization B, and
+    the bending stiffness kappa. The exponential factor accounts for energetic
+    and entropic contributions from strand deformation.
+
+    Args:
+        phi: Volume fractions of strand length components.
+        Df: Differential free energies of components.
+        P: Alignment parameter for strand orientation distribution.
+        B: Normalization factor ensuring sum of weights equals unity.
+        NS: Number of strands (discretized into units).
+
+    Returns:
+        Weight distribution array w_i for each strand component, normalized such
+        that Σw_i = 1 and Σw_i*Df_i = P.
+    """
     return (
         Qs
         * phi
@@ -33,6 +52,20 @@ def wfun(phi, Df, P, B, NS):
 
 
 def afun(x, NS):
+    """Constraint equations for alignment parameter P and normalization B.
+
+    Defines the system of self-consistency equations that determine P and B for
+    the polydisperse smooth strand model. The first equation enforces normalization
+    (Σw_i = 1), while the second ensures the mean differential free energy equals P.
+
+    Args:
+        x: Array [P, B] containing alignment parameter and normalization factor.
+        NS: Number of strands (discretized into units).
+
+    Returns:
+        Residual array [Σw_i - 1, Σw_i*df_i - P]. Both components should be zero
+        when P and B satisfy the self-consistency conditions.
+    """
     P = x[0]
     B = x[1]
     wi = wfun(phi, df, P, B, NS)
@@ -42,6 +75,23 @@ def afun(x, NS):
 
 
 def Free2(Ns, NT):
+    """Calculate total free energy for smooth polydisperse strand with bending stiffness.
+
+    Computes the Helmholtz free energy for a polydisperse smooth strand model
+    incorporating bending elasticity (via kappa), component mixing entropy (theta
+    and w distributions), and surface energy. Solves self-consistently for the
+    alignment parameter P and normalization B at fixed NS and NT.
+
+    Args:
+        Ns: Array containing number of strands NS as first element (for optimizer interface).
+        NT: Total number of monomers in the strand system.
+
+    Returns:
+        Total dimensionless free energy FF including mixing entropy of bound (w)
+        and unbound (theta) components, bending stiffness contributions, strand
+        stretching entropy, surface energy, and binding energy. Lower values
+        indicate more stable states.
+    """
     global LL, Qs, kappa, Pprevious, Bprevious
     NS = Ns[0]
     LL = NT / NS
@@ -102,6 +152,20 @@ def Free2(Ns, NT):
 
 
 def Free1(NT):
+    """Find minimum free energy for smooth polydisperse strand at fixed NT.
+
+    Determines the equilibrium number of strands NS by minimizing the total free
+    energy Free2(NS, NT) using Nelder-Mead simplex optimization. This accounts
+    for the complex coupling between bending stiffness, polydispersity, and
+    surface energy in the smooth strand model.
+
+    Args:
+        NT: Total number of monomers in the strand system (fixed).
+
+    Returns:
+        Minimum free energy value at optimal NS. The optimization balances
+        bending elasticity, mixing entropy, and surface contributions.
+    """
     x0 = NSprevious
     res = optimize.minimize(Free2, x0, method="Nelder-Mead", args=(NT))
     # res=scipy.optimize.minimize_scalar(Free2, bounds=(1,0.999999*NT), args=(NT), method='bounded')
@@ -110,6 +174,21 @@ def Free1(NT):
 
 
 def Freefluc(NT):
+    """Calculate smooth polydisperse free energy with Gaussian fluctuations.
+
+    Computes the free energy including fluctuation corrections for the smooth
+    polydisperse strand model. After finding the optimal NS, calculates the
+    second derivative to include Gaussian fluctuation entropy. Updates the
+    global NSprevious to warm-start subsequent optimizations.
+
+    Args:
+        NT: Total number of monomers in the strand system (fixed).
+
+    Returns:
+        Free energy with fluctuation correction: F_min + log(d²F/dNS² / 2π).
+        Accounts for thermal fluctuations around the mean-field minimum in
+        the complex smooth polydisperse strand model.
+    """
     global NSprevious
     x0 = NSprevious
     res = optimize.minimize(Free2, x0, method="Nelder-Mead", args=(NT))
@@ -126,6 +205,29 @@ def Freefluc(NT):
 
 
 def findDfStar(params):
+    """Find maximum activation barrier for smooth polydisperse strand nucleation.
+
+    Searches for the peak nucleation barrier ΔF* by marching through NT values
+    and evaluating the fluctuation-corrected free energy. The barrier height
+    controls nucleation kinetics in the smooth polydisperse strand model. The
+    search terminates early if the barrier drops by more than 1 kBT from the
+    maximum, indicating the peak has been passed.
+
+    Args:
+        params: Dictionary containing:
+            - phi: Volume fractions of strand length components
+            - df: Differential free energies of components
+            - epsilonB: Binding energy per monomer (E0)
+            - muS: Surface energy per unit area (mus)
+            - Kappa0: Curvature penalty for bending stiffness
+            - Qs0: Reference value for bound segment density
+            - maxNT: Maximum NT to search
+
+    Returns:
+        Tuple (BestBarrier, NT) where BestBarrier is the maximum nucleation
+        barrier height and NT is the final evaluated monomer number. Higher
+        barriers suppress strand nucleation more strongly.
+    """
     global E0, mus, Kappa0, Qs0, maxNT, phi, df, arsq, ar, numc, NSprevious, Pprevious, Bprevious, thetaMin
 
     # Extract params
@@ -180,6 +282,31 @@ def findDfStar(params):
 
 
 def findDfStar_Direct(params):
+    """Find barrier via direct optimization near previous barrier location.
+
+    Performs a local search for the nucleation barrier maximum by optimizing
+    FreeTrue in a narrow window around the previously found barrier location
+    (NTprevious). This refined search uses continuous optimization and is more
+    efficient than the full marching search when a good initial estimate exists.
+    Warm-starts the optimization using previous values of NS, P, and B.
+
+    Args:
+        params: Dictionary containing:
+            - phi: Volume fractions of strand length components
+            - df: Differential free energies of components
+            - epsilonB: Binding energy per monomer (E0)
+            - muS: Surface energy per unit area (mus)
+            - Kappa0: Curvature penalty for bending stiffness
+            - Qs0: Reference value for bound segment density
+            - NTprevious: Previous barrier location for local search
+            - NSprevious: Previous optimal NS for warm-start
+            - Pprevious: Previous alignment parameter for warm-start
+            - Bprevious: Previous normalization factor for warm-start
+
+    Returns:
+        Tuple (barrier, NT, NSprevious, Pprevious, Bprevious) containing the
+        refined barrier height, its NT location, and updated warm-start values.
+    """
     global E0, mus, Kappa0, Qs0, maxNT, phi, df, arsq, ar, numc, NSprevious, Pprevious, Bprevious, thetaMin
 
     # Extract params
@@ -209,4 +336,17 @@ def findDfStar_Direct(params):
 
 
 def FreeTrue(NT):
+    """Return negative of fluctuation-corrected free energy for maximization.
+
+    Wrapper function that returns the negative of the fluctuation-corrected free
+    energy. Used with minimization algorithms to find the maximum nucleation
+    barrier. The 1.0 * NT cast ensures NT is treated as a float.
+
+    Args:
+        NT: Total number of monomers (can be non-integer for smooth optimization).
+
+    Returns:
+        Negative of fluctuation-corrected free energy: -Freefluc(NT). Minimizing
+        this function locates the maximum barrier height.
+    """
     return -Freefluc(1.0 * NT)

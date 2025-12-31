@@ -167,11 +167,26 @@ class TheoryDebye(QTheory):
         )
 
     def handle_tbutstretched_triggered(self, checked):
-        """Check Streched"""
+        """Handle the stretched button toggle to apply chain deformation.
+
+        Updates the 'stretched' parameter which applies a strain measure by shifting
+        the radius of gyration by a constant factor Lambda for all q values.
+
+        Args:
+            checked (bool): True if the stretched button is checked, False otherwise.
+        """
         self.set_param_value("stretched", checked)
 
     def handle_tbutnonideal_triggered(self, checked):
-        """Handle Non-ideal"""
+        """Handle the non-ideal mix button toggle for polymer blend interactions.
+
+        Updates the 'non-ideal' parameter which models the effect of weak interaction
+        between hydrogenous and deuterated monomers using the random phase approximation
+        with the Chi parameter.
+
+        Args:
+            checked (bool): True if the non-ideal button is checked, False otherwise.
+        """
         self.set_param_value("non-ideal", checked)
 
     def calculateDebye(self, f=None):
@@ -214,11 +229,20 @@ class TheoryDebye(QTheory):
             tt.data[:, 1] = Contr * Mw / Mmono * Phi * (1.0 - Phi) * debFn + Bck
 
     def do_error(self, line):
-        """Report the error of the current theory
+        """Report the error of the current theory and display molecular weight and radius of gyration.
 
-Report the error of the current theory on all the files, taking into account the current selected xrange and yrange.
+        Report the error of the current theory on all the files, taking into account
+        the current selected xrange and yrange. Additionally, display a table showing
+        the molecular weight (Mw) and radius of gyration (Rg) for each active file,
+        accounting for the Lambda stretching parameter if enabled.
 
-File error is calculated as the mean square of the residual, averaged over all points in the file. Total error is the mean square of the residual, averaged over all points in all files."""
+        File error is calculated as the mean square of the residual, averaged over
+        all points in the file. Total error is the mean square of the residual,
+        averaged over all points in all files.
+
+        Args:
+            line (str): Command line arguments. If empty string, also prints Mw and Rg table.
+        """
         super().do_error(line)
         if line == "":
             self.Qprint("")

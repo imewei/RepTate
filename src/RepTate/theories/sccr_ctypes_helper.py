@@ -31,6 +31,19 @@ sccr_dy.restype = None
 
 
 def set_yeq_static(yeq):
+    """Set equilibrium configuration state vector in C library static memory.
+
+    Transfers the equilibrium state vector (yeq) to static memory in the compiled
+    C library for use in subsequent SCCR (Shear-Induced Constraint Release with
+    Convection) calculations. This avoids passing yeq repeatedly during integration.
+
+    Args:
+        yeq (np.ndarray): Equilibrium state vector containing orientation and
+                          stretch values for all relaxation modes at steady state
+
+    Returns:
+        None
+    """
     n = len(yeq)
     arr = (c_double * n)(*yeq[:])
     set_yeq_static_in_C(arr, c_int(n))

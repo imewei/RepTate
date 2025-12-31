@@ -282,17 +282,38 @@ class TheoryPomPom(QTheory):
         )
 
     def select_shear_flow(self):
+        """Select shear flow geometry for theory calculations.
+
+        Sets the flow mode to shear and updates the toolbar button icon.
+        This affects which differential equations are used for stress calculation.
+        """
         self.flow_mode = FlowMode.shear
         self.tbutflow.setDefaultAction(self.shear_flow_action)
 
     def select_extensional_flow(self):
+        """Select uniaxial extensional flow geometry for theory calculations.
+
+        Sets the flow mode to uniaxial extension and updates the toolbar button icon.
+        This affects which differential equations are used for stress calculation.
+        """
         self.flow_mode = FlowMode.uext
         self.tbutflow.setDefaultAction(self.extensional_flow_action)
 
     def get_modes_reptate(self):
+        """Get Maxwell modes from another theory in RepTate.
+
+        Opens a dialog to copy Maxwell modes (relaxation times and moduli) from
+        another theory or analysis that has modes available in the current application.
+        """
         self.Qcopy_modes()
 
     def edit_modes_window(self):
+        """Open interactive dialog to manually edit Maxwell modes.
+
+        Displays a table editor where users can modify relaxation times and moduli
+        for each mode. Users can add or remove modes, and changes are validated
+        before being applied to the theory parameters.
+        """
         times, G, success = self.get_modes()
         if not success:
             self.logger.warning("Could not get modes successfully")
@@ -320,6 +341,11 @@ class TheoryPomPom(QTheory):
                 self.handle_actionCalculate_Theory()
 
     def plot_modes_graph(self):
+        """Plot Maxwell modes in a graph.
+
+        Placeholder method for plotting the relaxation spectrum (moduli vs relaxation times).
+        Currently not implemented.
+        """
         pass
 
     def init_flow_mode(self):
@@ -335,7 +361,14 @@ class TheoryPomPom(QTheory):
             self.flow_mode = FlowMode.shear  # default mode: shear
 
     def get_modes(self):
-        """Get the values of Maxwell Modes from this theory"""
+        """Get the values of Maxwell Modes from this theory.
+
+        Returns:
+            tuple: A tuple containing:
+                - tau (np.ndarray): Array of backbone relaxation times (tauB) for each mode.
+                - G (np.ndarray): Array of moduli for each mode.
+                - success (bool): Always True, indicating successful retrieval.
+        """
         nmodes = self.parameters["nmodes"].value
         tau = np.zeros(nmodes)
         G = np.zeros(nmodes)
@@ -345,7 +378,18 @@ class TheoryPomPom(QTheory):
         return tau, G, True
 
     def set_modes(self, tau, G):
-        """Set the values of Maxwell Modes from another theory"""
+        """Set the values of Maxwell Modes from another theory.
+
+        Updates the theory parameters with new relaxation times and moduli,
+        automatically adjusting the number of modes to match the input arrays.
+
+        Args:
+            tau (np.ndarray): Array of backbone relaxation times to set for each mode.
+            G (np.ndarray): Array of moduli to set for each mode.
+
+        Returns:
+            bool: Always True, indicating successful mode assignment.
+        """
         nmodes = len(tau)
         self.set_param_value("nmodes", nmodes)
         for i in range(nmodes):
@@ -354,7 +398,25 @@ class TheoryPomPom(QTheory):
         return True
 
     def sigmadot_shear(self, l, t, p):
-        """PomPom model in shear"""
+        """PomPom model differential equation for stretch in shear flow.
+
+        Computes the time derivative of chain stretch for a single mode under
+        shear flow. The backbone orientation evolves separately according to
+        the affine deformation assumption.
+
+        Args:
+            l (float): Current chain stretch (lambda).
+            t (float): Current time.
+            p (list): Parameters [q, tauB, tauS, gdot] where q is number of arms,
+                tauB is backbone relaxation time, tauS is stretch relaxation time,
+                and gdot is shear rate.
+
+        Returns:
+            float: Time derivative of chain stretch (dl/dt).
+
+        Raises:
+            EndComputationRequested: If stop_theory_flag is set during computation.
+        """
         if self.stop_theory_flag:
             raise EndComputationRequested
         q, tauB, tauS, gdot = p
@@ -387,7 +449,25 @@ class TheoryPomPom(QTheory):
         return dydx
 
     def sigmadot_uext(self, l, t, p):
-        """PomPom model in uniaxial extension"""
+        """PomPom model differential equation for stretch in uniaxial extension.
+
+        Computes the time derivative of chain stretch for a single mode under
+        uniaxial extensional flow. The backbone orientation evolves separately
+        according to the affine deformation assumption.
+
+        Args:
+            l (float): Current chain stretch (lambda).
+            t (float): Current time.
+            p (list): Parameters [q, tauB, tauS, edot] where q is number of arms,
+                tauB is backbone relaxation time, tauS is stretch relaxation time,
+                and edot is elongation rate.
+
+        Returns:
+            float: Time derivative of chain stretch (dl/dt).
+
+        Raises:
+            EndComputationRequested: If stop_theory_flag is set during computation.
+        """
         if self.stop_theory_flag:
             raise EndComputationRequested
         q, tauB, tauS, edot = p
@@ -422,7 +502,24 @@ class TheoryPomPom(QTheory):
         return dydx
 
     def sigmadot_shearLAOS(self, l, t, p):
-        """PomPom model in shear LAOS"""
+        """PomPom model differential equation for stretch in LAOS (Large Amplitude Oscillatory Shear).
+
+        Computes the time derivative of chain stretch for a single mode under
+        oscillatory shear flow with strain gamma(t) = gamma0 * sin(omega * t).
+
+        Args:
+            l (float): Current chain stretch (lambda).
+            t (float): Current time.
+            p (list): Parameters [q, tauB, tauS, g0, w] where q is number of arms,
+                tauB is backbone relaxation time, tauS is stretch relaxation time,
+                g0 is strain amplitude, and w is angular frequency.
+
+        Returns:
+            float: Time derivative of chain stretch (dl/dt).
+
+        Raises:
+            EndComputationRequested: If stop_theory_flag is set during computation.
+        """
         if self.stop_theory_flag:
             raise EndComputationRequested
         q, tauB, tauS, g0, w = p
@@ -463,7 +560,16 @@ class TheoryPomPom(QTheory):
         return dydx
 
     def calculate_PomPom(self, f=None):
-        """Calculate the theory"""
+        """Calculate the Pom-Pom theory for a data file.
+
+        Main calculation routine that solves the Pom-Pom differential equations
+        for all modes and flow conditions. Handles both shear and extensional flows,
+        computing chain stretch evolution and resulting stress.
+
+        Args:
+            f (DataFile): Data file object containing experimental flow data and
+                parameters including flow rate (gdot).
+        """
         ft = f.data_table
         tt = self.tables[f.file_name_short]
         tt.num_columns = ft.num_columns
@@ -543,7 +649,15 @@ class TheoryPomPom(QTheory):
                 tt.data[:, 1] += 3 * G * l * l * k
 
     def calculate_PomPomLAOS(self, f=None):
-        """Calculate the theory in LAOS"""
+        """Calculate the Pom-Pom theory for Large Amplitude Oscillatory Shear (LAOS).
+
+        Solves the Pom-Pom differential equations for oscillatory shear flow,
+        computing the time-dependent stress response to sinusoidal strain input.
+
+        Args:
+            f (DataFile): Data file object containing LAOS experimental data and
+                parameters including strain amplitude (gamma) and frequency (omega).
+        """
         ft = f.data_table
         tt = self.tables[f.file_name_short]
         tt.num_columns = ft.num_columns
@@ -603,7 +717,21 @@ class TheoryPomPom(QTheory):
             tt.data[:, 2] += 3 * G * l * l * Axy_arr / (Axx_arr + 2.0)
 
     def set_param_value(self, name, value):
-        """Set the value of theory parameters"""
+        """Set the value of a theory parameter.
+
+        Handles special logic for the nmodes parameter, which requires creating
+        or deleting mode-specific parameters (G, tauB, q, ratio) when the number
+        of modes changes.
+
+        Args:
+            name (str): Name of the parameter to set.
+            value: New value for the parameter.
+
+        Returns:
+            tuple: A tuple containing:
+                - message (str): Error message if unsuccessful, empty string otherwise.
+                - success (bool): True if parameter was set successfully, False otherwise.
+        """
         if name == "nmodes":
             oldn = self.parameters["nmodes"].value
         message, success = super(TheoryPomPom, self).set_param_value(name, value)

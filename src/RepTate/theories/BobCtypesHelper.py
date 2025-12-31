@@ -109,39 +109,103 @@ class BobCtypesHelper:
             self.parent_theory.protoname_counter += 1
 
     def get_next_item_from_inp_file(self, *arg):
-        """BoB calls this function to read the 'virtual' inp file"""
+        """BoB calls this function to read the 'virtual' inp file.
+
+        This callback function is invoked by the BoB C++ library to sequentially
+        retrieve input parameters from a virtual input file stored in memory.
+
+        Args:
+            *arg: Variable arguments (unused, for compatibility with C callback signature).
+
+        Returns:
+            float or int: The next value from the virtual input file at the current counter position.
+        """
         val = self.parent_theory.virtual_input_file[self.parent_theory.inp_counter]
         self.parent_theory.inp_counter += 1
         return val
 
     def get_next_item_from_proto_file(self, *arg):
-        """BoB calls this function to read the 'virtual' inp file"""
+        """BoB calls this function to read the 'virtual' proto file.
+
+        This callback function is invoked by the BoB C++ library to sequentially
+        retrieve protocol parameters from a virtual proto file stored in memory.
+
+        Args:
+            *arg: Variable arguments (unused, for compatibility with C callback signature).
+
+        Returns:
+            float or int: The next value from the virtual proto file at the current counter position.
+        """
         val = self.parent_theory.virtual_proto_file[self.parent_theory.proto_counter]
         self.parent_theory.proto_counter += 1
         return val
 
     def get_freqmin(self, *arg):
-        """BoB LVE calls this function to get the min frequency"""
+        """BoB LVE calls this function to get the min frequency.
+
+        This callback function is invoked by the BoB C++ library during LVE
+        calculations to obtain the minimum frequency for the frequency sweep.
+
+        Args:
+            *arg: Variable arguments (unused, for compatibility with C callback signature).
+
+        Returns:
+            float: The minimum frequency value for the frequency sweep.
+        """
         return self.parent_theory.freqmin
 
     def get_freqmax(self, *arg):
-        """BoB LVE calls this function to get the max frequency"""
+        """BoB LVE calls this function to get the max frequency.
+
+        This callback function is invoked by the BoB C++ library during LVE
+        calculations to obtain the maximum frequency for the frequency sweep.
+
+        Args:
+            *arg: Variable arguments (unused, for compatibility with C callback signature).
+
+        Returns:
+            float: The maximum frequency value for the frequency sweep.
+        """
         return self.parent_theory.freqmax
 
     def get_freqint(self, *arg):
-        """BoB LVE calls this function to get the max frequency"""
+        """BoB LVE calls this function to get the frequency interval.
+
+        This callback function is invoked by the BoB C++ library during LVE
+        calculations to obtain the frequency interval spacing factor.
+
+        Args:
+            *arg: Variable arguments (unused, for compatibility with C callback signature).
+
+        Returns:
+            float: The frequency interval spacing factor (theory points spaced by log10(freqint)).
+        """
         return self.parent_theory.freqint
 
     def print_err_from_c(self, char):
-        """Function called by BoB from the C++ code. 
-        Called when error occured during BoB execution
+        """Function called by BoB from the C++ code when error occurs.
+
+        This callback function is invoked by the BoB C++ library to report
+        errors during execution. The error message is formatted and displayed
+        to the user via the parent theory's Qprint method.
+
+        Args:
+            char (c_char_p): C-style character pointer containing the error message
+                from the BoB library.
         """
         err_msg = "<b>ERROR encountered in BoB:</b><br>%s<hr>" % (char.decode())
         self.parent_theory.Qprint(err_msg)
 
     def print_from_c(self, char):
-        """Function called by BoB from the C++ code. 
-        Called during normal BoB execution
+        """Function called by BoB from the C++ code during normal execution.
+
+        This callback function is invoked by the BoB C++ library to report
+        progress messages and information during normal execution. The message
+        is decoded and displayed to the user via the parent theory's Qprint method.
+
+        Args:
+            char (c_char_p): C-style character pointer containing the message
+                from the BoB library.
         """
         msg = "%s" % (char.decode())
         self.parent_theory.Qprint(msg)
@@ -213,8 +277,29 @@ class BobCtypesHelper:
         self.bob_lib.def_get_string(self.cb_send_string)
 
     def save_polyconf_and_return_gpc(self, arg_list, npol_tot):
-        """Run BoB asking for a polyconf file only (no relaxation etc) and
-        output the characteristics of the polymer configuration"""
+        """Run BoB asking for a polyconf file only and output polymer characteristics.
+
+        Executes the BoB C++ library to generate a polymer configuration file
+        without performing relaxation calculations. Returns gel permeation
+        chromatography (GPC) data including molecular weight distribution,
+        branching distribution, and g-factor distribution.
+
+        Args:
+            arg_list (list of str): Command-line arguments for the BoB executable,
+                typically ["./bob", "-i", input_file, "-c", config_file].
+            npol_tot (int): Total number of polymers in the configuration.
+
+        Returns:
+            list: A list containing [mn, mw, arrs] where:
+                - mn (float): Number-average molecular weight.
+                - mw (float): Weight-average molecular weight.
+                - arrs (list of list): Four arrays containing [lgmid, wtbin, brbin, gbin]
+                    representing log molecular weight bins, weight distribution,
+                    branching distribution, and g-factor distribution.
+
+        Raises:
+            BobError: If an error occurs during BoB execution.
+        """
         # prepare the arguments for bob_main function
         n_arg = len(arg_list)
         argv = (c_char_p * n_arg)()
@@ -265,7 +350,24 @@ class BobCtypesHelper:
         raise BobError
 
     def return_bob_lve(self, arg_list):
-        """Run BoB LVE and copy results to arrays"""
+        """Run BoB LVE and copy results to arrays.
+
+        Executes the BoB C++ library to perform linear viscoelastic (LVE) calculations
+        for a polymer configuration. Returns frequency-dependent storage and loss moduli.
+
+        Args:
+            arg_list (list of str): Command-line arguments for the BoB executable,
+                typically ["./bob", "-i", input_file, "-c", config_file].
+
+        Returns:
+            list: A list containing [omega, g_p, g_pp] where:
+                - omega (list of float): Angular frequency values (rad/s).
+                - g_p (list of float): Storage modulus G' values (Pa).
+                - g_pp (list of float): Loss modulus G'' values (Pa).
+
+        Raises:
+            BobError: If an error occurs during BoB execution.
+        """
         # virtual inp file
         self.parent_theory.inp_counter = 0
         # prepare the arguments for bob_main function
@@ -290,7 +392,29 @@ class BobCtypesHelper:
         raise BobError
 
     def return_bob_nlve(self, arg_list, flowrate, tmin, tmax, is_shear):
-        """Run BoB NLVE and copy results to arrays"""
+        """Run BoB NLVE and copy results to arrays.
+
+        Executes the BoB C++ library to perform nonlinear viscoelastic (NLVE) calculations
+        for a polymer configuration under shear or extensional flow. Returns time-dependent
+        stress evolution.
+
+        Args:
+            arg_list (list of str): Command-line arguments for the BoB executable,
+                typically ["./bob", "-i", input_file, "-c", config_file].
+            flowrate (float): Flow rate (shear rate or extension rate) in s^-1.
+            tmin (float): Minimum time for the calculation (s).
+            tmax (float): Maximum time for the calculation (s).
+            is_shear (bool): True for shear flow, False for extensional flow.
+
+        Returns:
+            list: A list containing [time_arr, stress_arr] where:
+                - time_arr (list of float): Time values (s).
+                - stress_arr (list of float): Stress values (Pa) - shear stress for shear flow,
+                    extensional stress for extensional flow.
+
+        Raises:
+            BobError: If an error occurs during BoB execution.
+        """
         # virtual inp file
         self.parent_theory.inp_counter = 0
         # prepare the arguments for bob_main function

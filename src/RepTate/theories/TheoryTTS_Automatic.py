@@ -155,12 +155,28 @@ class TheoryTTSShiftAutomatic(QTheory):
         self.dir_start = os.path.join(RepTate.root_dir, "data")
 
     def print_activation_energy(self):
+        """Print Arrhenius activation energy from automatic shift factors.
+
+        Performs an Arrhenius fit to the horizontal shift factors obtained from
+        automatic TTS shifting and calculates activation energy with 95% confidence
+        intervals using Student's t-distribution. Results are printed to the theory
+        output window, grouped by case (Mw).
+        """
         # Evaluate activation ennergy from Arrhenius fit
         if self.aT_vs_T == []:
             self.Qprint("<h3>Apply TTS first</h3>")
             return
 
         def f(invT, Ea):
+            """Arrhenius equation for activation energy fitting.
+
+            Args:
+                invT (float): Inverse temperature in K^-1.
+                Ea (float): Activation energy in J/mol.
+
+            Returns:
+                float: Natural logarithm of horizontal shift factor ln(aT).
+            """
             return Ea / 8.314 * (invT - 1 / (273.15 + self.parameters["T"].value))
 
         Ea_list = []
@@ -191,6 +207,12 @@ class TheoryTTSShiftAutomatic(QTheory):
             self.Qprint(table)
 
     def populate_TempComboBox(self):
+        """Populate the temperature combobox with common temperatures.
+
+        Finds all temperatures that appear in every case (Mw combination) and
+        adds them to the combobox. Only temperatures present across all cases
+        are valid reference temperatures for master curve construction.
+        """
         k = list(self.Tdict.keys())
         a = sorted(list(set([x[0] for x in self.Tdict[k[0]]])))
         for i in range(1, len(k)):
@@ -204,6 +226,11 @@ class TheoryTTSShiftAutomatic(QTheory):
         self.update_parameter_table()
 
     def do_vertical_shift(self):
+        """Toggle vertical shift parameter based on toolbar button state.
+
+        Updates the 'vert' parameter to enable or disable vertical shifting
+        during automatic TTS optimization.
+        """
         self.set_param_value("vert", self.verticalshift.isChecked())
 
     # def do_save_dialog(self):
@@ -213,6 +240,11 @@ class TheoryTTSShiftAutomatic(QTheory):
     #     self.do_save(folder)
 
     def change_temperature(self):
+        """Handle temperature combobox selection change.
+
+        Updates the reference temperature parameter when user selects a different
+        temperature from the combobox. Catches exceptions if combobox is empty.
+        """
         try:
             self.set_param_value("T", float(self.cbTemp.currentText()))
             self.update_parameter_table()
@@ -220,10 +252,21 @@ class TheoryTTSShiftAutomatic(QTheory):
             pass
 
     def refresh_temperatures(self):
+        """Refresh the list of available reference temperatures.
+
+        Re-scans the dataset for available cases and temperatures, then updates
+        the temperature combobox. Useful when files have been added or removed.
+        """
         self.Mwset, self.Mw, self.Tdict = self.get_cases()
         self.populate_TempComboBox()
 
     def save_shift_factors(self):
+        """Save automatically determined shift factors to .ttsf files.
+
+        Opens a dialog for the user to select a folder, then writes shift factor files
+        (one per case defined by Mw, MwB, phi, phiB combinations) containing temperature,
+        horizontal shift aT, and vertical shift bT for all files in each case.
+        """
         dilogue_name = "Select Folder for Saving Shift Factors"
         folder = QFileDialog.getExistingDirectory(self, dilogue_name, self.dir_start)
         if not isdir(folder):
@@ -266,7 +309,14 @@ class TheoryTTSShiftAutomatic(QTheory):
         QMessageBox.information(self, "Saved Files", msg)
 
     def TheoryTTSShiftAutomatic(self, f=None):
-        """Calculate the theory"""
+        """Calculate automatic TTS shift for a single file.
+
+        Applies previously determined horizontal and vertical shift factors to the
+        data. Shift factors are stored in self.shiftParameters dictionary.
+
+        Args:
+            f (DataFile): File object containing rheological data to be shifted.
+        """
         ft = f.data_table
         tt = self.tables[f.file_name_short]
         tt.num_columns = ft.num_columns
@@ -284,9 +334,16 @@ class TheoryTTSShiftAutomatic(QTheory):
         tt.data[:, 2] = ft.data[:, 2] * np.power(10.0, V)
 
     def get_cases(self):
-        """Get all different samples in the dataset
+        """Get all different samples in the dataset.
 
-        Samples are different if Mw, Mw2, phi, phi2 are different
+        Samples are different if Mw, Mw2, phi, phi2 are different. Creates a dictionary
+        mapping each unique case to a list of files with their temperatures.
+
+        Returns:
+            tuple: Three-element tuple containing:
+                - list: Unique cases as tuples (Mw, Mw2, phi, phi2)
+                - list: Mw tuple for each file in dataset
+                - dict: Maps each case to list of [T, file_index, filename, file_object]
         """
         nfiles = len(self.parent_dataset.files)
         Mw = []
@@ -321,16 +378,21 @@ class TheoryTTSShiftAutomatic(QTheory):
         return p, Mw, Tdict
 
     def do_error(self, line):
-        """Override the error calculation for TTS
+        """Override the error calculation for TTS.
 
-        The error is calculated as the vertical distance between theory points, in the current view,\
-        calculated over all possible pairs of theory tables, when the theories overlap in the horizontal direction and\
+        The error is calculated as the vertical distance between theory points, in the current view,
+        calculated over all possible pairs of theory tables, when the theories overlap in the horizontal direction and
         they correspond to files with the same Mw (if the parameters Mw2 and phi exist, their values are also
         used to classify the error). 1/2 of the error is added to each file.
-        Report the error of the current theory on all the files.\n\
-        File error is calculated as the mean square of the residual, averaged over all calculated points in the shifted tables.\n\
+        Report the error of the current theory on all the files.
+        File error is calculated as the mean square of the residual, averaged over all calculated points in the shifted tables.
         Total error is the mean square of the residual, averaged over all points considered in all files.
 
+        Args:
+            line (str): Command line argument; if empty, prints detailed error table.
+
+        Returns:
+            float: Total mean squared error averaged over all overlapping data points.
         """
         total_error = 0
         npoints = 0
@@ -433,7 +495,15 @@ class TheoryTTSShiftAutomatic(QTheory):
         return total_error
 
     def func_fitTTS(self, *param_in):
-        """Overload the fit function"""
+        """Overload the fit function for automatic TTS optimization.
+
+        Args:
+            *param_in: Variable length argument list containing parameter values
+                (currently unused as automatic TTS has no fittable parameters).
+
+        Returns:
+            float: Total mean squared error for current shift configuration.
+        """
         ind = 0
         k = list(self.parameters.keys())
         k.sort()
@@ -447,7 +517,19 @@ class TheoryTTSShiftAutomatic(QTheory):
         return error
 
     def func_fitTTS_one(self, *param_in):
-        """fit one Mw and phi"""
+        """Fit one file to the current master curve.
+
+        Optimizes horizontal and (optionally) vertical shift factors to minimize
+        the error in overlapping regions with the master curve.
+
+        Args:
+            *param_in: Variable length argument list containing:
+                - param_in[0][0] (float): log10 of horizontal shift factor
+                - param_in[0][1] (float, optional): log10 of vertical shift factor
+
+        Returns:
+            float: Mean squared error in log10 space for overlapping regions.
+        """
         H = param_in[0][0]
         V = 0
         if self.parameters["vert"].value:
@@ -484,7 +566,15 @@ class TheoryTTSShiftAutomatic(QTheory):
         return error / npt
 
     def do_fit(self, line):
-        """Minimize the error"""
+        """Minimize the error through automatic shift factor optimization.
+
+        For each case (unique Mw combination), iteratively builds a master curve by
+        optimizing shift factors for files in order of proximity to the reference
+        temperature. Uses Nelder-Mead algorithm to find optimal shifts.
+
+        Args:
+            line (str): Command line arguments (unused in current implementation).
+        """
         self.fitting = True
         start_time = time.time()
         # view = self.parent_dataset.parent_application.current_view
@@ -631,7 +721,16 @@ class TheoryTTSShiftAutomatic(QTheory):
     #     return completions
 
     def do_save(self, line, extra_txt=""):
-        """Save the results from TTSShiftAutomatic theory predictions to a TTS file"""
+        """Save the results from TTSShiftAutomatic theory predictions to TTS files.
+
+        Creates master curve files (one per unique combination of Mw, Mw2, phi, phi2)
+        containing all shifted data at the reference temperature. Files include
+        metadata with file parameters and theory parameters.
+
+        Args:
+            line (str): Directory path for saving files; uses dataset directory if empty.
+            extra_txt (str): Additional text to append to filename before extension.
+        """
         nfiles = len(self.parent_dataset.files)
         MwUnique = list(set(self.Mw))
         MwUnique.sort()

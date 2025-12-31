@@ -58,6 +58,21 @@ react_lib = load_ctypes_library(lib_path, "React CH library")
 
 # struct
 class polybits_global_const(ct.Structure):
+    """Global constants for polymer reaction simulations.
+
+    This structure contains maximum limits and configuration constants used throughout
+    the polymer reaction simulation framework. These constants define memory allocation
+    limits for various data structures in the C library.
+
+    Attributes:
+        maxbobbins (int): Maximum number of BoB (Branch-on-Branch) bins for molecular weight distribution.
+        maxmwdbins (int): Maximum number of molecular weight distribution bins.
+        maxarm (int): Maximum number of polymer arms that can be stored in memory.
+        maxpol (int): Maximum number of polymer molecules that can be stored.
+        maxreact (int): Maximum number of reaction distributions that can be tracked.
+        MAX_RLEVEL (int): Maximum recursion level for polymer architecture analysis.
+        MAX_NBR (int): Maximum number of branch points per polymer molecule.
+    """
     _fields_ = [
         ("maxbobbins", ct.c_int),
         ("maxmwdbins", ct.c_int),
@@ -70,6 +85,24 @@ class polybits_global_const(ct.Structure):
 
 
 class polybits_global(ct.Structure):
+    """Global state variables for polymer reaction memory pool management.
+
+    This structure tracks the current state of the polymer reaction simulation memory pools,
+    including availability of resources and pointers to the first available records in each pool.
+
+    Attributes:
+        first_in_pool (int): Index of the first available arm record in the pool.
+        first_poly_in_pool (int): Index of the first available polymer record in the pool.
+        first_dist_in_pool (int): Index of the first available distribution record in the pool.
+        mmax (int): Current maximum number of monomers.
+        num_react (int): Current number of active reaction distributions.
+        arms_left (int): Number of arm records remaining in memory.
+        react_pool_initialised (bool): Whether the reaction pool has been initialized.
+        react_pool_declared (bool): Whether the reaction pool has been declared.
+        arms_avail (bool): Whether arm records are available for allocation.
+        polys_avail (bool): Whether polymer records are available for allocation.
+        dists_avail (bool): Whether distribution records are available for allocation.
+    """
     _fields_ = [
         ("first_in_pool", ct.c_int),
         ("first_poly_in_pool", ct.c_int),
@@ -86,6 +119,32 @@ class polybits_global(ct.Structure):
 
 
 class arm(ct.Structure):
+    """Representation of a polymer chain arm.
+
+    This structure contains all properties and connectivity information for a single
+    polymer arm within a branched polymer molecule. Arms are connected through branching
+    points and form the tree-like structure of the polymer.
+
+    Attributes:
+        arm_len (float): Length of the arm in monomer units.
+        arm_conv (float): Conversion fraction at which this arm was created.
+        arm_time (float): Time at which this arm was created during polymerization.
+        arm_tm (float): Monomer addition time for this arm.
+        arm_tddb (float): Time for double bond formation.
+        L1 (int): Index of first left-connected arm (branch point).
+        L2 (int): Index of second left-connected arm (branch point).
+        R1 (int): Index of first right-connected arm (branch point).
+        R2 (int): Index of second right-connected arm (branch point).
+        up (int): Index of parent arm (toward polymer backbone).
+        down (int): Index of child arm (away from backbone).
+        armnum (int): Unique identifier for this arm.
+        armcat (int): Catalyst type that created this arm.
+        ended (int): Flag indicating if arm growth has terminated.
+        endfin (int): Flag indicating final termination state.
+        scission (int): Flag indicating if arm underwent chain scission.
+        senio (int): Seniority level (generation number from first monomer).
+        prio (int): Priority level (distance from chain end).
+    """
     _fields_ = [
         ("arm_len", ct.c_double),
         ("arm_conv", ct.c_double),
@@ -109,6 +168,26 @@ class arm(ct.Structure):
 
 
 class polymer(ct.Structure):
+    """Representation of a complete polymer molecule.
+
+    This structure represents a complete polymer molecule composed of multiple arms
+    connected through branch points. It tracks the molecule's topology, molecular weight,
+    and structural characteristics.
+
+    Attributes:
+        first_end (int): Index of the first chain end (arm) in this polymer.
+        num_br (int): Number of branch points in this polymer molecule.
+        bin (int): Molecular weight bin assignment for this polymer.
+        num_sat (int): Number of saturated (terminated) chain ends.
+        num_unsat (int): Number of unsaturated (active) chain ends.
+        armnum (int): Index of the primary arm of this polymer.
+        nextpoly (int): Index of the next polymer in linked list.
+        tot_len (float): Total length of all arms in monomer units (molecular weight proxy).
+        gfactor (float): G-factor (radius of gyration ratio) for this polymer architecture.
+        saved (bool): Whether this polymer has been saved to output.
+        max_senio (int): Maximum seniority level found in this polymer.
+        max_prio (int): Maximum priority level found in this polymer.
+    """
     _fields_ = [
         ("first_end", ct.c_int),
         ("num_br", ct.c_int),
@@ -126,6 +205,60 @@ class polymer(ct.Structure):
 
 
 class reactresults(ct.Structure):
+    """Complete results from a polymer reaction simulation.
+
+    This structure stores all computed properties and distributions from a polymerization
+    reaction simulation, including molecular weight distributions, branching statistics,
+    and architecture classification results.
+
+    Attributes:
+        wt (POINTER(float)): Pointer to weight fraction array for molecular weight bins.
+        avbr (POINTER(float)): Pointer to average branching per bin array.
+        wmass (POINTER(float)): Pointer to weight-average mass per bin array.
+        avg (POINTER(float)): Pointer to average g-factor per bin array.
+        lgmid (POINTER(float)): Pointer to log10 of bin center molecular weights.
+        numinbin (POINTER(int)): Pointer to number of polymers in each MW bin.
+        numin_armwt_bin (POINTER(int)): Pointer to number of arms in each arm weight bin.
+        numin_num_br_bin (POINTER(int)): Pointer to number of polymers by branch point count.
+        num_armwt_bin (int): Number of bins used for arm weight distribution.
+        max_num_br (int): Maximum number of branch points found in any polymer.
+        monmass (float): Monomer molecular weight (g/mol).
+        M_e (float): Entanglement molecular weight (g/mol).
+        N_e (float): Number of monomers per entanglement.
+        boblgmin (float): Log10 of minimum molecular weight for BoB binning.
+        boblgmax (float): Log10 of maximum molecular weight for BoB binning.
+        m_w (float): Weight-average molecular weight (g/mol).
+        m_n (float): Number-average molecular weight (g/mol).
+        brav (float): Average number of branches per 1000 carbon atoms.
+        m_z (float): Z-average molecular weight (g/mol).
+        m_zp1 (float): Z+1 average molecular weight (g/mol).
+        m_zp2 (float): Z+2 average molecular weight (g/mol).
+        first_poly (int): Index of first polymer in linked list.
+        next (int): Index of next available polymer slot.
+        nummwdbins (int): Number of molecular weight distribution bins.
+        numbobbins (int): Number of BoB (Branch-on-Branch) bins.
+        bobbinmax (int): Maximum number of polymers per BoB bin.
+        nsaved (int): Number of polymer configurations saved for BoB analysis.
+        npoly (int): Total number of polymers generated in simulation.
+        simnumber (int): Unique simulation identifier.
+        polysaved (bool): Whether polymer configurations have been saved.
+        name (bytes): Name/identifier for this simulation result.
+        wlin (float): Total weight of linear polymers.
+        wstar (float): Total weight of star polymers.
+        wH (float): Total weight of H-shaped polymers.
+        w7arm (float): Total weight of 7-arm polymers.
+        wcomb (float): Total weight of comb polymers.
+        wother (float): Total weight of other architectures.
+        nlin (int): Number of linear polymers.
+        nstar (int): Number of star polymers.
+        nH (int): Number of H-shaped polymers.
+        n7arm (int): Number of 7-arm polymers.
+        ncomb (int): Number of comb polymers.
+        nother (int): Number of other architectures.
+        nsaved_arch (int): Number of polymers saved for architecture analysis.
+        arch_minwt (float): Minimum molecular weight for architecture classification.
+        arch_maxwt (float): Maximum molecular weight for architecture classification.
+    """
     _fields_ = [
         ("wt", ct.POINTER(ct.c_double)),
         ("avbr", ct.POINTER(ct.c_double)),
@@ -290,6 +423,15 @@ link_react_dist()
 
 # struct
 class tobitabatch_global(ct.Structure):
+    """Global state for Tobita batch polymerization simulations.
+
+    This structure tracks the state of batch polymerization simulations using
+    the Tobita algorithm for free-radical polymerization.
+
+    Attributes:
+        tobbatchnumber (int): Simulation identifier for current batch polymerization.
+        tobitabatcherrorflag (bool): Error flag indicating if simulation encountered errors.
+    """
     _fields_ = [("tobbatchnumber", ct.c_int), ("tobitabatcherrorflag", ct.c_bool)]
 
 
@@ -310,6 +452,18 @@ tobbatch.restype = ct.c_bool
 
 # struct
 class binsandbob_global(ct.Structure):
+    """Global results for multi-distribution binning and BoB analysis.
+
+    This structure stores aggregate results when analyzing multiple polymer
+    distributions together, combining their molecular weight distributions
+    and branching statistics.
+
+    Attributes:
+        multi_m_w (float): Combined weight-average molecular weight (g/mol).
+        multi_m_n (float): Combined number-average molecular weight (g/mol).
+        multi_brav (float): Combined average branching per 1000 carbons.
+        multi_nummwdbins (int): Number of bins used for combined distribution.
+    """
     _fields_ = [
         ("multi_m_w", ct.c_double),
         ("multi_m_n", ct.c_double),
@@ -362,6 +516,15 @@ set_react_dist_M_e.restype = ct.c_double
 
 # struct
 class tobitaCSTR_global(ct.Structure):
+    """Global state for Tobita CSTR polymerization simulations.
+
+    This structure tracks the state of continuous stirred-tank reactor (CSTR)
+    polymerization simulations using the Tobita algorithm.
+
+    Attributes:
+        tobCSTRnumber (int): Simulation identifier for current CSTR polymerization.
+        tobitaCSTRerrorflag (bool): Error flag indicating if simulation encountered errors.
+    """
     _fields_ = [("tobCSTRnumber", ct.c_int), ("tobitaCSTRerrorflag", ct.c_bool)]
 
 
@@ -382,6 +545,15 @@ tobCSTR.restype = ct.c_bool
 
 # struct
 class dieneCSTR_global(ct.Structure):
+    """Global state for diene CSTR polymerization simulations.
+
+    This structure tracks the state of continuous stirred-tank reactor (CSTR)
+    polymerization simulations involving diene monomers.
+
+    Attributes:
+        dieneCSTRnumber (int): Simulation identifier for current diene CSTR polymerization.
+        dieneCSTRerrorflag (bool): Error flag indicating if simulation encountered errors.
+    """
     _fields_ = [("dieneCSTRnumber", ct.c_int), ("dieneCSTRerrorflag", ct.c_bool)]
 
 
@@ -402,6 +574,15 @@ dieneCSTR.restype = ct.c_bool
 
 # struct
 class mulmetCSTR_global(ct.Structure):
+    """Global state for multi-metallocene CSTR polymerization simulations.
+
+    This structure tracks the state of continuous stirred-tank reactor (CSTR)
+    polymerization simulations using multiple metallocene catalysts.
+
+    Attributes:
+        mulmetCSTRnumber (int): Simulation identifier for current multi-metallocene CSTR.
+        mulmetCSTRerrorflag (bool): Error flag indicating if simulation encountered errors.
+    """
     _fields_ = [("mulmetCSTRnumber", ct.c_int), ("mulmetCSTRerrorflag", ct.c_bool)]
 
 
@@ -421,8 +602,18 @@ mulmetCSTR.restype = ct.c_bool
 
 
 def end_print(parent_theory, ndist, do_architecture):
-    """Print the simulation information at the end of the run. 
-    Print priority and seniority information if needed"""
+    """Print comprehensive simulation results after reaction simulation completes.
+
+    Outputs a formatted table of molecular weight averages, branching statistics,
+    and architecture distribution (if enabled) to the theory's message panel.
+
+    Args:
+        parent_theory: The parent theory object providing Qprint method for output.
+        ndist (int): Index of the reaction distribution in the react_dist array.
+        do_architecture (bool): Whether to include architecture analysis in output.
+            When True, prints distribution of polymer topologies (linear, star, H, etc.)
+            within the specified molecular weight range.
+    """
     parent_theory.Qprint("<b>Simulation Results:</b>")
 
     table = []
@@ -486,8 +677,20 @@ def end_print(parent_theory, ndist, do_architecture):
 
 
 def prio_and_senio(parent_theory, f, ndist, do_architecture):
-    """Get the arm length prob. distr. and priority vs seniority form C and save it in the
-    theory DataTable"""
+    """Extract and store priority/seniority analysis from C library to DataTable.
+
+    Retrieves arm length probability distributions, branch point statistics, and
+    priority-seniority relationships from the C simulation results and stores them
+    in the theory's DataTable extra_tables dictionary for visualization.
+
+    Args:
+        parent_theory: The parent theory object containing tables dictionary.
+        f: File object with file_name_short attribute used as table key.
+        ndist (int): Index of the reaction distribution in the react_dist array.
+        do_architecture (bool): Whether to include detailed priority/seniority analysis.
+            When True, extracts and stores: avarmlen_v_senio, avarmlen_v_prio,
+            avprio_v_senio, avsenio_v_prio, proba_senio, and proba_prio distributions.
+    """
     tt = parent_theory.tables[f.file_name_short]
     # arm length
     lgmax = np.log10(react_dist[ndist].contents.arch_maxwt * 1.01)

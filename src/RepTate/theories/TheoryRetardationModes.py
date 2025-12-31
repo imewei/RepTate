@@ -171,11 +171,19 @@ class TheoryRetardationModesTime(QTheory):
         connection_id = self.modesaction.triggered.connect(self.modesaction_change)
 
     def Qhide_theory_extras(self, state):
-        """Uncheck the modeaction button. Called when curent theory is changed"""
+        """Uncheck the modeaction button. Called when curent theory is changed.
+
+        Args:
+            state (bool): The state to set for the modes action checkbox.
+        """
         self.modesaction.setChecked(state)
 
     def modesaction_change(self, checked):
-        """Change visibility of modes"""
+        """Change visibility of modes.
+
+        Args:
+            checked (bool): Whether the modes action button is checked.
+        """
         self.graphicmodes_visible(checked)
         # self.view_modes = self.modesaction.isChecked()
         # self.graphicmodes.set_visible(self.view_modes)
@@ -186,7 +194,11 @@ class TheoryRetardationModesTime(QTheory):
         # self.do_calculate("")
 
     def handle_spinboxValueChanged(self, value):
-        """Handle a change of the parameter 'nmode'"""
+        """Handle a change of the parameter 'nmodes'.
+
+        Args:
+            value (int): The new number of modes.
+        """
         nmodesold = self.parameters["nmodes"].value
         tminold = self.parameters["logtmin"].value
         tmaxold = self.parameters["logtmax"].value
@@ -216,7 +228,12 @@ class TheoryRetardationModesTime(QTheory):
         self.update_parameter_table()
 
     def drag_mode(self, dx, dy):
-        """Drag modes around"""
+        """Drag modes around to interactively adjust mode parameters.
+
+        Args:
+            dx (numpy.ndarray): Array of x-coordinates (relaxation times) for the dragged modes.
+            dy (numpy.ndarray): Array of y-coordinates (compliances) for the dragged modes.
+        """
         nmodes = self.parameters["nmodes"].value
         self.set_param_value("logtmin", dx[0])
         self.set_param_value("logtmax", dx[nmodes - 1])
@@ -263,12 +280,20 @@ class TheoryRetardationModesTime(QTheory):
         self.graphicmodes.remove()
 
     def show_theory_extras(self, show=False):
-        """Called when the active theory is changed"""
+        """Called when the active theory is changed.
+
+        Args:
+            show (bool): Whether to show the theory extras. Defaults to False.
+        """
         self.Qhide_theory_extras(show)
         self.graphicmodes_visible(show)
 
     def graphicmodes_visible(self, state):
-        """Change visibility of modes"""
+        """Change visibility of modes.
+
+        Args:
+            state (bool): Whether the graphic modes should be visible.
+        """
         self.view_modes = state
         self.graphicmodes.set_visible(self.view_modes)
         if self.view_modes:
@@ -279,7 +304,12 @@ class TheoryRetardationModesTime(QTheory):
         self.parent_dataset.parent_application.update_plot()
 
     def get_modes(self):
-        """Get the values of Maxwell Modes from this theory"""
+        """Get the values of Retardation Modes from this theory.
+
+        Returns:
+            tuple: A tuple containing (tau, J, success) where tau is the relaxation time array,
+                J is the compliance array, and success is a boolean indicating successful retrieval.
+        """
         nmodes = self.parameters["nmodes"].value
         tau = np.logspace(
             self.parameters["logtmin"].value, self.parameters["logtmax"].value, nmodes
@@ -290,7 +320,11 @@ class TheoryRetardationModesTime(QTheory):
         return tau, J, True
 
     def RetardationModesTime(self, f=None):
-        """Calculate the theory"""
+        """Calculate the theory prediction for time-dependent Retardation modes.
+
+        Args:
+            f (DataFile): The file object containing experimental creep data to fit.
+        """
         ft = f.data_table
         tt = self.tables[f.file_name_short]
         tt.num_columns = ft.num_columns

@@ -174,18 +174,41 @@ class TheoryKWWModesFrequency(QTheory):
         connection_id = self.modesaction.triggered.connect(self.modesaction_change)
 
     def Qhide_theory_extras(self, state):
-        """Uncheck the modeaction button. Called when curent theory is changed"""
+        """Uncheck the modeaction button. Called when current theory is changed.
+
+        Args:
+            state (bool): The checked state to apply to the modes action button.
+                True to check the button, False to uncheck it.
+        """
         self.modesaction.setChecked(state)
 
     def modesaction_change(self, checked):
-        """Change mode visibility"""
+        """Change mode visibility.
+
+        This method is called when the user toggles the modes visibility action button
+        in the theory toolbar. It updates the graphical representation of the modes
+        on the plot.
+
+        Args:
+            checked (bool): The new checked state of the modes action button.
+                True to show modes, False to hide them.
+        """
         self.graphicmodes_visible(checked)
         # self.view_modes = self.modesaction.isChecked()
         # self.graphicmodes.set_visible(self.view_modes)
         # self.do_calculate("")
 
     def handle_spinboxValueChanged(self, value):
-        """Handle a change of the parameter 'nmode'"""
+        """Handle a change of the parameter 'nmodes'.
+
+        This method is called when the user changes the number of modes using the spinbox
+        in the theory toolbar. It interpolates the existing mode amplitudes to the new
+        number of modes, preserving the overall shape of the mode distribution.
+
+        Args:
+            value (int): The new number of modes requested by the user.
+                Must be between 1 and MAX_MODES (40).
+        """
         nmodesold = self.parameters["nmodes"].value
         wminold = self.parameters["logwmin"].value
         wmaxold = self.parameters["logwmax"].value
@@ -215,7 +238,20 @@ class TheoryKWWModesFrequency(QTheory):
         self.update_parameter_table()
 
     def drag_mode(self, dx, dy):
-        """Drag modes"""
+        """Drag modes.
+
+        This method is called when the user interactively drags the graphical mode markers
+        on the plot. It updates the mode frequencies (via logwmin and logwmax) and mode
+        amplitudes (logDe parameters) based on the new marker positions.
+
+        Args:
+            dx (numpy.ndarray): Array of new x-coordinates (frequencies) for the mode markers.
+                Length equals the number of modes. Values may be in linear or log scale
+                depending on the current view settings.
+            dy (numpy.ndarray): Array of new y-coordinates (amplitudes) for the mode markers.
+                Length equals the number of modes. Values may be in linear or log scale
+                depending on the current view settings.
+        """
         nmodes = self.parameters["nmodes"].value
         if self.parent_dataset.parent_application.current_view.log_x:
             self.set_param_value("logwmin", np.log10(dx[0]))
@@ -272,12 +308,29 @@ class TheoryKWWModesFrequency(QTheory):
         self.graphicmodes.remove()
 
     def show_theory_extras(self, show=False):
-        """Called when the active theory is changed"""
+        """Called when the active theory is changed.
+
+        This method controls the visibility of theory-specific UI elements and graphical
+        overlays when switching between different theories in the application.
+
+        Args:
+            show (bool, optional): Whether to show or hide the theory extras.
+                True to show modes and UI elements, False to hide them.
+                Defaults to False.
+        """
         self.Qhide_theory_extras(show)
         self.graphicmodes_visible(show)
 
     def graphicmodes_visible(self, state):
-        """Change visibility of modes"""
+        """Change visibility of modes.
+
+        This method controls whether the graphical mode markers are displayed on the plot
+        and whether they respond to user interaction (dragging).
+
+        Args:
+            state (bool): The desired visibility state for the graphical modes.
+                True to make modes visible and interactive, False to hide them.
+        """
         self.view_modes = state
         self.graphicmodes.set_visible(self.view_modes)
         if self.view_modes:
@@ -288,7 +341,20 @@ class TheoryKWWModesFrequency(QTheory):
         self.parent_dataset.parent_application.update_plot()
 
     def get_modes(self):
-        """Get the values of Maxwell Modes from this theory"""
+        """Get the values of Maxwell Modes from this theory.
+
+        Extracts the current mode parameters (relaxation times and amplitudes) from the
+        theory's parameter dictionary and returns them in a format suitable for analysis
+        or export to other theories.
+
+        Returns:
+            tuple: A 3-element tuple containing:
+                - tau (numpy.ndarray): Relaxation times for each mode, computed as 1/frequency.
+                    Shape: (nmodes,)
+                - eps (numpy.ndarray): Mode amplitudes (permittivity differences) in linear scale.
+                    Shape: (nmodes,)
+                - bool: Always True, indicating successful mode extraction.
+        """
         nmodes = self.parameters["nmodes"].value
         freq = np.logspace(
             self.parameters["logwmin"].value, self.parameters["logwmax"].value, nmodes
@@ -300,7 +366,24 @@ class TheoryKWWModesFrequency(QTheory):
         return tau, eps, True
 
     def KWWModesFrequency(self, f=None):
-        """Calculate theory"""
+        """Calculate theory.
+
+        Computes the complex permittivity using a sum of KWW (stretched exponential) modes.
+        Each mode contributes to the frequency-dependent dielectric response according to
+        the Kohlrausch-Williams-Watts relaxation function, with both real (epsilon') and
+        imaginary (epsilon'') components computed using the libkww library.
+
+        The calculation uses:
+        - kwwc: computes the real part of the complex permittivity for each mode
+        - kwws: computes the imaginary part of the complex permittivity for each mode
+
+        Results are accumulated across all modes and stored in the output data table with
+        real part in column 1 and imaginary part in column 2.
+
+        Args:
+            f (DataFile, optional): The data file to fit. Contains the experimental
+                frequency data in f.data_table. Defaults to None.
+        """
         ft = f.data_table
         tt = self.tables[f.file_name_short]
         tt.num_columns = ft.num_columns

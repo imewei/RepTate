@@ -151,7 +151,11 @@ reactor during free-radical polymerisation.
         rgt.initialise_tool_bar(self)
 
     def theory_buttons_disabled(self, state):
-        """Disable/Enable some theory buttons before/after calculation start."""
+        """Disable/Enable some theory buttons before/after calculation start.
+
+        Args:
+            state (bool): If True, disable theory buttons. If False, enable them.
+        """
         rgt.theory_buttons_disabled(self, state)
 
     def handle_save_bob_configuration(self):
@@ -163,11 +167,21 @@ reactor during free-radical polymerisation.
         rgt.handle_edit_bob_settings(self)
 
     def handle_btn_prio_senio(self, checked):
-        """Change do_priority_seniority"""
+        """Change do_priority_seniority.
+
+        Args:
+            checked (bool): New state of the priority/seniority toggle button.
+                If True, enable priority/seniority analysis. If False, disable it.
+        """
         rgt.handle_btn_prio_senio(self, checked)
 
     def set_extra_data(self, extra_data):
-        """set extra data"""
+        """Set extra data when loading a saved project.
+
+        Args:
+            extra_data (dict): Dictionary containing saved theory state data,
+                including polymer configurations and analysis results.
+        """
         rgt.set_extra_data(self, extra_data)
 
     def get_extra_data(self):
@@ -181,11 +195,28 @@ reactor during free-radical polymerisation.
         super().request_stop_computations()
 
     def do_error(self, line):
-        """This theory does not calculate the error"""
+        """This theory does not calculate the error.
+
+        Args:
+            line (str): The file line identifier (unused in this theory).
+        """
         pass
 
     def Calc(self, f=None):
-        """Calculate the theory"""
+        """Calculate the Tobita CSTR reaction theory.
+
+        Simulates LDPE synthesis in a continuous stirred tank reactor (CSTR) using
+        the Tobita algorithm. Creates branched polymer molecules by simulating
+        free-radical polymerization with termination, combination, long-chain branching,
+        and scission reactions.
+
+        Args:
+            f (File, optional): Data file to calculate the theory for. Defaults to None.
+
+        Returns:
+            int: Number of molecular weight bins used in the calculation, or 0 if
+                the calculation failed or was stopped.
+        """
 
         # get parameters
         tau = self.parameters["tau"].value
@@ -357,6 +388,12 @@ reactor during free-radical polymerisation.
         return calc
 
     def show_theory_extras(self, checked):
+        """Show or hide additional theory controls and visualizations.
+
+        Args:
+            checked (bool): If True, show extra theory controls and plots.
+                If False, hide them.
+        """
         rgt.show_theory_extras(self, checked)
 
     def destructor(self):
@@ -364,7 +401,14 @@ reactor during free-radical polymerisation.
         rch.return_dist(ct.c_int(self.ndist))
 
     def do_fit(self, line=""):
-        """No fitting allowed in this theory"""
+        """No fitting allowed in this theory.
+
+        This method only updates the x and y range settings if visible.
+        Actual parameter fitting is not supported for this stochastic simulation.
+
+        Args:
+            line (str, optional): Command line arguments (unused). Defaults to "".
+        """
         if self.xrange.get_visible():
             if self.xmin > self.xmax:
                 temp = self.xmin

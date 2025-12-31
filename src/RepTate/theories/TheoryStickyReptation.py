@@ -112,6 +112,20 @@ class TheoryStickyReptation(QTheory):
         )
 
     def g_descloizeaux(self, x, tol):
+        """Calculate the des Cloizeaux function for contour length fluctuations.
+
+        Computes the des Cloizeaux integral function g(x) which accounts for
+        contour length fluctuation effects in the reptation model. The function
+        is evaluated as an infinite series that is truncated when the tolerance
+        is reached.
+
+        Args:
+            x (np.ndarray): Array of dimensionless time values (t/tau_rep * Ze/alpha).
+            tol (float): Numerical tolerance for truncating the infinite series.
+
+        Returns:
+            np.ndarray: Array of g(x) values corresponding to each input x value.
+        """
         N = len(x)
         gx = np.zeros(len(x))  # output array
         for n in range(0, N):

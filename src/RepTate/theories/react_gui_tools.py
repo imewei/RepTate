@@ -69,7 +69,15 @@ else:
     CHARCODE = "latin-1"
 
 def launch_mix_dialog(parent_theory):
-    """Launch a dialog box to select the React-Mix theory parameters"""
+    """Launch a dialog box to select the React-Mix theory parameters.
+
+    Opens a modal dialog allowing the user to select which reaction simulations
+    to include in a mixture and specify their relative proportions.
+
+    Args:
+        parent_theory: The parent ReactMix theory object. Sets success_dialog
+            attribute to True if user accepts, False if cancelled.
+    """
     dialog = ParameterReactMix(parent_theory)
     if dialog.exec_():
         parent_theory.success_dialog = True
@@ -78,7 +86,15 @@ def launch_mix_dialog(parent_theory):
 
 
 def launch_mulmet_dialog(parent_theory):
-    """Launch a dialog box to select the Multi-Metallocene theory parameters"""
+    """Launch a dialog box to select the Multi-Metallocene theory parameters.
+
+    Opens a modal dialog for configuring multi-metallocene CSTR polymerization
+    parameters including catalyst concentrations and kinetic constants.
+
+    Args:
+        parent_theory: The parent MultiMetCSTR theory object. Sets success_dialog
+            attribute to True if user accepts, False if cancelled.
+    """
     dialog = ParameterMultiMetCSTR(parent_theory)
     if dialog.exec_():
         parent_theory.success_dialog = True
@@ -87,7 +103,15 @@ def launch_mulmet_dialog(parent_theory):
 
 
 def request_more_polymer(parent_theory):
-    """Generic function called when run out of polymers"""
+    """Request additional memory allocation for polymer records.
+
+    Called automatically when the simulation runs out of storage for polymer
+    structures. Launches a dialog to increase memory allocation.
+
+    Args:
+        parent_theory: The parent theory object. Sets success_increase_memory
+            attribute to indicate whether memory increase succeeded.
+    """
     success_increase_memory = None
     new_max, success_increase_memory = handle_increase_records(parent_theory, "polymer")
     if not success_increase_memory:
@@ -102,7 +126,15 @@ def request_more_polymer(parent_theory):
 
 
 def request_more_arm(parent_theory):
-    """Generic function called when run out of arms"""
+    """Request additional memory allocation for arm records.
+
+    Called automatically when the simulation runs out of storage for arm
+    structures. Launches a dialog to increase memory allocation.
+
+    Args:
+        parent_theory: The parent theory object. Sets success_increase_memory
+            attribute to indicate whether memory increase succeeded.
+    """
     success_increase_memory = None
     new_max, success_increase_memory = handle_increase_records(parent_theory, "arm")
     if not success_increase_memory:
@@ -122,7 +154,15 @@ def request_more_arm(parent_theory):
 
 
 def request_more_dist(parent_theory):
-    """Generic function called when run out of distributions"""
+    """Request additional memory allocation for distribution records.
+
+    Called automatically when too many theory instances are open. Launches
+    a dialog to increase memory allocation and re-links the Python react_dist array.
+
+    Args:
+        parent_theory: The parent theory object. Triggers recalculation if
+            memory allocation succeeds.
+    """
     success_increase_memory = None
     new_max, success_increase_memory = handle_increase_records(parent_theory, "dist")
     if success_increase_memory:
@@ -136,6 +176,16 @@ def request_more_dist(parent_theory):
 
 
 def set_extra_data(parent_theory, extra_data):
+    """Restore theory state from saved extra_data dictionary.
+
+    Called when loading a saved theory to restore UI state, particularly
+    the priority/seniority analysis toggle.
+
+    Args:
+        parent_theory: The parent theory object to configure.
+        extra_data (dict): Dictionary containing saved state with key
+            'prio_senio_checked' indicating priority/seniority toggle state.
+    """
     try:
         if extra_data["prio_senio_checked"] == 1:
             handle_btn_prio_senio(parent_theory, True)
@@ -144,6 +194,15 @@ def set_extra_data(parent_theory, extra_data):
 
 
 def get_extra_data(parent_theory):
+    """Save theory state to extra_data dictionary for persistence.
+
+    Called when saving a theory to preserve UI state, particularly the
+    priority/seniority analysis toggle.
+
+    Args:
+        parent_theory: The parent theory object. Updates extra_data dictionary
+            with 'prio_senio_checked' key containing priority/seniority state.
+    """
     try:
         parent_theory.extra_data["prio_senio_checked"] = int(
             parent_theory.do_priority_seniority
@@ -153,7 +212,16 @@ def get_extra_data(parent_theory):
 
 
 def initialise_tool_bar(parent_theory):
-    """Add icons in theory toolbar"""
+    """Initialize the theory toolbar with React-specific action buttons.
+
+    Creates and configures toolbar buttons for BoB settings, polymer configuration
+    saving, and priority/seniority analysis. Disables standard theory toolbar
+    buttons that are not applicable to reaction theories.
+
+    Args:
+        parent_theory: The parent theory object. Adds toolbar widgets and connects
+            signal handlers to theory methods.
+    """
     # disable buttons
     parent_theory.parent_dataset.actionMinimize_Error.setDisabled(True)
     # parent_theory.parent_dataset.actionCalculate_Theory.setDisabled(True)
@@ -196,7 +264,15 @@ def initialise_tool_bar(parent_theory):
 
 
 def handle_btn_prio_senio(parent_theory, checked):
-    """Change do_priority_seniority"""
+    """Toggle priority and seniority analysis and update view configuration.
+
+    Enables or disables priority/seniority calculation and adjusts the number
+    of plot panels accordingly, adding or removing extra views for P&S visualization.
+
+    Args:
+        parent_theory: The parent theory object.
+        checked (bool): Whether priority/seniority analysis is enabled.
+    """
     parent_theory.do_priority_seniority = checked
     app = parent_theory.parent_dataset.parent_application
     app.viewComboBox.blockSignals(True)
@@ -277,18 +353,29 @@ def show_theory_extras(parent_theory, show):
 
 
 def theory_buttons_disabled(parent_theory, state):
-    """
-    Enable/Disable theory buttons, typically called at the start and stop of a calculation.
-    This is relevant in multithread mode only.
+    """Enable/Disable theory-specific toolbar buttons during calculations.
+
+    Called at the start and stop of calculations to prevent user interaction
+    with BoB settings and save buttons while simulation is running.
+
+    Args:
+        parent_theory: The parent theory object with button attributes.
+        state (bool): True to disable buttons, False to enable them.
     """
     parent_theory.bob_settings_button.setDisabled(state)
     parent_theory.save_bob_configuration_button.setDisabled(state)
 
 
 def handle_save_mix_configuration(parent_theory):
-    """
-    Launch a dialog to select a filename where to save the polymer configurations.
-    Then call the C routine 'multipolyconfwrite' that the data into the selected file
+    """Save polymer configurations from a mixture to file for BoB analysis.
+
+    Launches a parameter dialog to verify distribution parameters, then a file dialog
+    to select output location. Calls the C routine 'multipolyconfwrite' to write
+    the weighted mixture of polymer configurations to the selected file.
+
+    Args:
+        parent_theory: The parent ReactMix theory object containing mixture
+            composition (dists, weights, n_inmix attributes).
     """
     if not parent_theory.calcexists:
         msg = '<font color=green><b>No simulation performed yet. Press "Calculate"</b></font>'
@@ -338,9 +425,15 @@ def handle_save_mix_configuration(parent_theory):
 
 
 def handle_save_bob_configuration(parent_theory):
-    """
-    Launch a dialog to select a filename where to save the polymer configurations.
-    Then call the C routine 'polyconfwrite' that the data into the selected file
+    """Save polymer configurations to file for BoB rheology analysis.
+
+    Launches a file dialog to select output location, then calls the C routine
+    'polyconfwrite' to write saved polymer configurations with current Me and
+    monomer mass parameters to the selected file.
+
+    Args:
+        parent_theory: The parent theory object with simexists flag, ndist index,
+            and parameters dictionary containing 'Me' and 'mon_mass'.
     """
     if parent_theory.simexists:
         ndist = parent_theory.ndist
@@ -369,7 +462,16 @@ def handle_save_bob_configuration(parent_theory):
 
 
 def handle_edit_bob_settings(parent_theory):
-    """Launch a dialog and modify the BoB binning settings if the user press "OK", else nothing happend."""
+    """Launch a dialog to modify BoB binning settings for saved polymers.
+
+    Opens a modal dialog showing current binning parameters (number of bins,
+    MW range, max polymers per bin) and updates the C distribution structure
+    if the user accepts the changes.
+
+    Args:
+        parent_theory: The parent theory object with simexists flag and ndist
+            index pointing to the current reaction distribution.
+    """
     if parent_theory.simexists:
         ndist = parent_theory.ndist
         numbobbins = rch.react_dist[ndist].contents.numbobbins
@@ -396,9 +498,19 @@ def handle_edit_bob_settings(parent_theory):
 
 
 def handle_increase_records(parent_theory, name):
-    """Launch a dialog asking if the user what to allocate more memory for arms, polymers, or distribution.
-        'name' should be "arm", "polymer", or "dist".
-        Return the new max value or zero if max value not changed
+    """Launch a dialog to allocate more memory for simulation data structures.
+
+    Displays current memory usage and offers options to increase allocation by
+    1.5x, 2x, or 5x. Calls the appropriate C realloc function if user accepts.
+
+    Args:
+        parent_theory: The parent theory object for displaying messages.
+        name (str): Type of record to increase, must be "arm", "polymer", or "dist".
+
+    Returns:
+        tuple: (new_max, success) where new_max is the new maximum record count
+            (0 if unchanged) and success is a boolean indicating whether the
+            memory allocation succeeded.
     """
     if name == "arm":
         current_max = rch.pb_global_const.maxarm
@@ -577,7 +689,14 @@ class ParameterReactMix(QDialog):
         )  # get number of included theories in mix
 
     def createFormGroupBox(self, theory_list):
-        """Create a form to set the new values of mix parameters"""
+        """Create a scrollable form to set the new values of mix parameters.
+
+        Builds a grid layout with one row per available theory showing application/dataset/theory
+        path, number of polymers generated/saved, include checkbox, ratio, and weight fraction.
+
+        Args:
+            theory_list (list): List of React theory objects to include in the form.
+        """
         inner = QWidget()
         layout = QGridLayout()
         layout.setSpacing(10)
@@ -662,10 +781,20 @@ class EditMixSaveParamDialog(QDialog):
         self.setWindowTitle("Distribution parameters check")
 
     def accept_(self):
+        """Handle dialog acceptance by retrieving form values and closing dialog.
+
+        Triggered when 'OK' button is pushed. Calls get_lines() to extract
+        and store the form values before accepting the dialog.
+        """
         self.get_lines()
         self.accept()
 
     def get_lines(self):
+        """Extract and store distribution parameters from form input fields.
+
+        Reads monomer mass and Me values from each line and updates the
+        corresponding C distribution structures.
+        """
         for i, dist in enumerate(
             self.parent_theory.dists
         ):  # loop over the distributions in mix
@@ -675,7 +804,15 @@ class EditMixSaveParamDialog(QDialog):
             rch.set_react_dist_M_e(ct.c_int(dist), ct.c_double(Me))
 
     def createFormGroupBox(self, parent_theory):
-        """Create a form to set the new values of the parameters"""
+        """Create a scrollable form to verify and edit distribution parameters.
+
+        Builds a grid layout showing each distribution in the mix with editable
+        monomer mass and Me fields, with a warning about BoB limitations.
+
+        Args:
+            parent_theory: The parent ReactMix theory object containing dists,
+                theory_names, and weights attributes.
+        """
 
         inner = QWidget()
         layout = QGridLayout()
@@ -802,7 +939,15 @@ class ParameterMultiMetCSTR(QDialog):
         self.accept()
 
     def make_lines(self, source):
-        """Create the input-parameter-form lines with default parameter values"""
+        """Create the input-parameter-form lines with default parameter values.
+
+        Generates QLineEdit widgets for each catalyst and parameter, populated
+        with values from the source (either saved values or zeros for new lines).
+
+        Args:
+            source (list): 2D list of parameter values [catalyst][parameter] where
+                each parameter is a string representation of the value.
+        """
         dvalidator = QDoubleValidator()  # prevent letters etc.
         dvalidator.setBottom(0)  # minimum allowed value
         qledit = QLineEdit()
@@ -837,9 +982,13 @@ class ParameterMultiMetCSTR(QDialog):
                 self.parent_theory.pvalues[i][j] = self.lines[i][j].text()
 
     def handle_sb_ncatalyst_valueChanged(self, ncatalyst):
-        """Handle a change of the number of catalysts.
-        Destroy the form and create new one with the selected number of line
-        Keep the values previously entered
+        """Handle a change of the number of catalysts in the spinbox.
+
+        Saves current form values, destroys the existing form, and creates a new
+        one with the selected number of catalyst rows, preserving previously entered values.
+
+        Args:
+            ncatalyst (int): New number of catalyst rows to display.
         """
         self.save_lines()
         self.mainLayout.removeWidget(self.scroll)
@@ -850,7 +999,14 @@ class ParameterMultiMetCSTR(QDialog):
         self.mainLayout.insertWidget(1, self.scroll)  # insert above OK/Cancel buttons
 
     def createFormGroupBox(self, ncatalyst):
-        """Create a form to set the new values of polymerisation parameters"""
+        """Create a scrollable form to set polymerization parameters for each catalyst.
+
+        Builds a grid layout with ncatalyst rows, each containing input fields for
+        catalyst concentration, Kp, K=, Ks, and KpLCB.
+
+        Args:
+            ncatalyst (int): Number of catalyst rows to display in the form.
+        """
         inner = QWidget()
 
         layout = QGridLayout()
@@ -897,7 +1053,17 @@ class EditBobSettingsDialog(QDialog):
         self.setWindowTitle("Edit")
 
     def createFormGroupBox(self, numbobbins, bobmax, bobmin, bobbinmax):
-        """Create a form to set the new values of the BoB binning parameters"""
+        """Create a form to set the new values of the BoB binning parameters.
+
+        Builds a form with validated input fields for the four BoB binning
+        parameters, enforcing proper ranges.
+
+        Args:
+            numbobbins (int): Current number of BoB bins.
+            bobmax (float): Current maximum bin molecular weight (g/mol).
+            bobmin (float): Current minimum bin molecular weight (g/mol).
+            bobbinmax (int): Current maximum number of polymers per bin.
+        """
         self.formGroupBox = QGroupBox("Edit BoB Binning Settings")
         layout = QFormLayout()
 
@@ -956,7 +1122,16 @@ class IncreaseRecordsDialog(QDialog):
         self.setWindowTitle("More %s records?" % name)
 
     def createExclusiveGroup(self, current_max, name, size_of):
-        """Create the radio buttons choices"""
+        """Create radio button group with memory allocation options.
+
+        Builds three radio button options (1.5x, 2x, 5x) with estimated RAM
+        requirements and displays available system memory.
+
+        Args:
+            current_max (int): Current maximum number of records allocated.
+            name (str): Type of record ("arm", "polymer", or "dist").
+            size_of (float): Size of one record structure in MB.
+        """
         self.formGroupBox = QWidget()
         size = int(size_of * np.ceil(0.5 * current_max))
         if size < 1:

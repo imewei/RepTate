@@ -194,6 +194,16 @@ class TheoryRDPLVE(QTheory):
         connection_id = self.save_modes_action.triggered.connect(self.save_modes)
 
     def handle_with_gcorr_button(self, checked):
+        """Handle the modulus correction button toggle.
+
+        This method is called when the user toggles the "Modulus Correction" button.
+        If checked and Zeff data is available, it enables the Likhtman-McLeish CLF
+        correction function for the plateau modulus. Otherwise, it warns the user.
+
+        Args:
+            checked (bool): The checked state of the with_gcorr_button.
+                True to enable modulus correction, False to disable.
+        """
         if checked:
             if len(self.Zeff) > 0:
                 # if Zeff contains something
@@ -209,13 +219,26 @@ class TheoryRDPLVE(QTheory):
         self.parent_dataset.handle_actionCalculate_Theory()
 
     def Qhide_theory_extras(self, show):
-        """Called when current theory is changed"""
+        """Called when current theory is changed.
+
+        Enables or disables dataset actions that are not compatible with this theory.
+        The RDP LVE theory disables error minimization and limit-setting actions.
+
+        Args:
+            show (bool): If True, disable the incompatible actions. If False, keep them disabled.
+        """
         self.parent_dataset.actionMinimize_Error.setDisabled(show)
         self.parent_dataset.actionShow_Limits.setDisabled(show)
         self.parent_dataset.actionVertical_Limits.setDisabled(show)
         self.parent_dataset.actionHorizontal_Limits.setDisabled(show)
 
     def get_modes_reptate(self):
+        """Get modes from a Discretize MWD theory in the application.
+
+        This method searches all theories in the application manager for a "Discretize MWD"
+        theory and prompts the user to select one. The selected MWD is then used to
+        calculate the relaxation modes for the RDP LVE theory via the dilution equation.
+        """
         apmng = self.parent_dataset.parent_application.parent_manager
         get_dict = {}
         for app in apmng.applications.values():
@@ -254,6 +277,12 @@ class TheoryRDPLVE(QTheory):
         # self.parent_dataset.handle_actionCalculate_Theory()
 
     def edit_modes_window(self):
+        """Open a dialog to manually edit the relaxation modes.
+
+        Displays a table dialog allowing the user to edit the volume fractions (phi)
+        and reptation times (tauD) for each mode. Updates the theory parameters
+        if the user confirms the changes.
+        """
         nmodes = self.parameters["nmodes"].value
         phi = np.zeros(nmodes)
         taud = np.zeros(nmodes)
@@ -287,6 +316,12 @@ class TheoryRDPLVE(QTheory):
                 self.handle_actionCalculate_Theory()
 
     def edit_mwd_modes(self):
+        """Open a dialog to edit the molecular weight distribution.
+
+        Displays a dialog allowing the user to manually enter molecular masses and
+        volume fractions, along with Me and tau_e parameters. The MWD is then
+        converted to relaxation modes using the dilution equation.
+        """
         d = EditMWDDialog(self, self.MWD_m, self.MWD_phi, 200)
         if d.exec_():
             nmodes = d.table.rowCount()
@@ -310,7 +345,18 @@ class TheoryRDPLVE(QTheory):
 
 
     def set_extra_data(self, extra_data):
-        """Set extra data when loading project"""
+        """Set extra data when loading project.
+
+        Restores theory-specific state including the molecular weight distribution,
+        effective entanglement numbers, and the modulus correction button state.
+
+        Args:
+            extra_data (dict): Dictionary containing extra theory-specific data:
+                - MWD_m (list): Molecular masses from MWD.
+                - MWD_phi (list): Volume fractions from MWD.
+                - Zeff (list): Effective entanglement numbers for each mode.
+                - with_gcorr (bool): Whether modulus correction is enabled.
+        """
         self.MWD_m = extra_data["MWD_m"]
         self.MWD_phi = extra_data["MWD_phi"]
         self.Zeff = extra_data["Zeff"]
@@ -328,7 +374,17 @@ class TheoryRDPLVE(QTheory):
         self.extra_data["with_gcorr"] = self.with_gcorr == GcorrMode.with_gcorr
 
     def get_modes(self):
-        """Get the values of Maxwell Modes from this theory"""
+        """Get the values of Maxwell Modes from this theory.
+
+        Extracts the relaxation times and moduli for all modes from the theory parameters.
+        Each mode has a relaxation time (tauD) and a modulus (GN0 * phi).
+
+        Returns:
+            tuple: A tuple containing:
+                - tau (np.ndarray): Array of relaxation times for each mode.
+                - G (np.ndarray): Array of moduli for each mode.
+                - success (bool): Always True for this theory.
+        """
         nmodes = self.parameters["nmodes"].value
         tau = np.zeros(nmodes)
         G = np.zeros(nmodes)
@@ -339,11 +395,29 @@ class TheoryRDPLVE(QTheory):
         return tau, G, True
 
     def fZ(self, z):
-        """CLF correction function Likthman-McLeish (2002)"""
+        """CLF correction function Likhtman-McLeish (2002).
+
+        Contour length fluctuation correction function for the reptation time.
+
+        Args:
+            z (float): Number of entanglements per chain.
+
+        Returns:
+            float: The CLF correction factor for the reptation time.
+        """
         return 1 - 2 * 1.69 / sqrt(z) + 4.17 / z - 1.55 / (z * sqrt(z))
 
     def gZ(self, z):
-        """CLF correction function for modulus Likthman-McLeish (2002)"""
+        """CLF correction function for modulus Likhtman-McLeish (2002).
+
+        Contour length fluctuation correction function for the plateau modulus.
+
+        Args:
+            z (float): Number of entanglements per chain.
+
+        Returns:
+            float: The CLF correction factor for the plateau modulus.
+        """
         return 1 - 1.69 / sqrt(z) + 2.0 / z - 1.24 / (z * sqrt(z))
 
     def set_modes_from_mwd(self, m, phi):
@@ -368,7 +442,20 @@ class TheoryRDPLVE(QTheory):
         self.parent_dataset.handle_actionCalculate_Theory()
 
     def set_param_value(self, name, value):
-        """Set the value of a theory parameter"""
+        """Set the value of a theory parameter.
+
+        Overrides the base method to handle dynamic creation and deletion of
+        mode-specific parameters (phi and tauD) when the number of modes changes.
+
+        Args:
+            name (str): Name of the parameter to set.
+            value: New value for the parameter.
+
+        Returns:
+            tuple: A tuple containing:
+                - message (str): Error message if setting failed, empty string otherwise.
+                - success (bool): True if the parameter was set successfully.
+        """
         if name == "nmodes":
             oldn = self.parameters["nmodes"].value
         message, success = super().set_param_value(name, value)
@@ -401,7 +488,15 @@ class TheoryRDPLVE(QTheory):
         return "", True
 
     def calculate(self, f=None):
-        """Calculate the theory"""
+        """Calculate the Rolie-Double-Poly linear viscoelastic predictions.
+
+        Computes G' and G'' using the RDP model for polydisperse entangled linear polymers.
+        The storage and loss moduli are calculated as double sums over all mode pairs,
+        with optional CLF modulus correction if enabled.
+
+        Args:
+            f (DataFile): Data file containing experimental data with frequency in column 0.
+        """
         ft = f.data_table
         tt = self.tables[f.file_name_short]
         tt.num_columns = ft.num_columns

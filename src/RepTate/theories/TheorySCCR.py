@@ -192,27 +192,71 @@ class TheorySCCR(QTheory):
         connection_id = self.recommendedN.triggered.connect(self.handle_recommendedN)
 
     def select_shear_flow(self):
+        """Select shear flow mode and update toolbar button.
+
+        Sets the theory to calculate shear flow rheological properties
+        and updates the toolbar button icon to reflect the current mode.
+        """
         self.flow_mode = FlowMode.shear
         self.tbutflow.setDefaultAction(self.shear_flow_action)
 
     def select_extensional_flow(self):
+        """Select extensional flow mode and update toolbar button.
+
+        Sets the theory to calculate extensional flow rheological properties
+        and updates the toolbar button icon to reflect the current mode.
+        """
         self.flow_mode = FlowMode.uext
         self.tbutflow.setDefaultAction(self.extensional_flow_action)
 
     def handle_recommendedN(self, checked):
+        """Handle recommended N value checkbox toggle.
+
+        When enabled, the theory will automatically calculate the optimal
+        number of grid points based on the number of entanglements Z and
+        constraint release parameter c_nu. When disabled, the user can
+        manually set N via the spinbox.
+
+        Args:
+            checked (bool): True if recommended N is enabled, False otherwise.
+        """
         self.spinbox.setEnabled(not checked)
         self.set_param_value("recommendedN", checked)
 
     def handle_spinboxValueChanged(self, value):
+        """Handle spinbox value change for precision parameter N.
+
+        Updates the N parameter which controls the precision of the SCCR
+        calculation. The actual number of grid points is N*Z, where Z
+        is the number of entanglements.
+
+        Args:
+            value (int): New value of N (multiplier for number of grid points).
+        """
         self.set_param_value("N", value)
 
     def set_extra_data(self, extra_data):
-        """Set extra data when loading project"""
+        """Set extra data when loading project.
+
+        Restores the state of UI widgets (spinbox and recommendedN checkbox)
+        from saved parameter values when loading a project file.
+
+        Args:
+            extra_data (dict): Extra data dictionary (not currently used,
+                reserved for future extensions).
+        """
         self.spinbox.setValue(self.parameters["N"].value)
         self.recommendedN.setChecked(self.parameters["recommendedN"].value)
         self.handle_recommendedN(self.parameters["recommendedN"].value)
 
     def launch_get_MW_dialog(self):
+        """Launch dialog to request missing molecular weight value.
+
+        Opens a modal dialog asking the user to provide the weight-average
+        molecular weight (Mw) for a data file that is missing this required
+        parameter. The dialog result is stored in instance variables for
+        processing by the calling code.
+        """
         title = 'Missing "Mw" value'
         msg = 'Set "Mw" value for file "%s"' % self.fname_missing_mw
         def_val = 10
@@ -234,20 +278,54 @@ class TheorySCCR(QTheory):
             self.flow_mode = FlowMode.shear  # default mode: shear
 
     def do_fit(self, line):
-        """Minimisation procedure disabled in this theory"""
+        """Minimisation procedure disabled in this theory.
+
+        SCCR theory does not support automatic parameter fitting due to
+        the computational cost of the calculations. Parameters must be
+        set manually.
+
+        Args:
+            line (str): Command line arguments (ignored).
+        """
         self.Qprint(
             "<font color=red><b>Minimisation procedure disabled in this theory</b></font>"
         )
 
     def show_theory_extras(self, show=False):
-        """Called when the active theory is changed"""
+        """Called when the active theory is changed.
+
+        This theory has no extra graphics to show/hide, so this method
+        does nothing.
+
+        Args:
+            show (bool): True to show extras, False to hide them.
+        """
         pass
 
     def extra_graphic_visible(self, state):
-        """Do nothing"""
+        """Handle visibility state change of extra graphics.
+
+        This theory has no extra graphics, so this method does nothing.
+
+        Args:
+            state (bool): Visibility state (ignored).
+        """
         pass
 
     def Get_Recommended_N(self, cnu, z):
+        """Calculate recommended number of grid points based on constraint release and entanglements.
+
+        Determines the optimal precision parameter N based on the constraint
+        release parameter c_nu and the number of entanglements Z. The algorithm
+        uses empirical rules to balance accuracy and computational cost.
+
+        Args:
+            cnu (float): Constraint release parameter (c_nu).
+            z (int): Number of entanglements (Z = Mw/Me).
+
+        Returns:
+            int: Recommended N value (actual grid points = N*Z).
+        """
         n = 0
         if cnu > 0.1:
             if z < 5:
@@ -280,6 +358,19 @@ class TheorySCCR(QTheory):
         return n
 
     def Set_beta_rcr(self, z, cnu):
+        """Calculate the reduced constraint release parameter beta_rcr.
+
+        Computes the effective constraint release parameter accounting for
+        the number of entanglements and constraint release strength. Uses
+        empirical fitting functions from Graham et al. (2003).
+
+        Args:
+            z (int): Number of entanglements (Z = Mw/Me).
+            cnu (float): Constraint release parameter (c_nu).
+
+        Returns:
+            float: Reduced constraint release parameter beta_rcr.
+        """
         beta_rcr = 1
         if cnu > 0:
             logcnu = np.log10(cnu)
@@ -296,14 +387,28 @@ class TheorySCCR(QTheory):
         return beta_rcr
 
     def ind(self, k, i, j):
-        """
-        Convert k,i,j (3D array) indices to ind (1D array), considering the symmetry of the problem
-         \  1 /  (j=i diagonal)
-          \  /
-         2 \/ 4
-           /\
-          /  \
-         /  3 \ (j=self.N-i diagonal)
+        """Convert 3D array indices to 1D array index exploiting symmetry.
+
+        Maps (k, i, j) coordinates to a linear index in a 1D array, taking
+        advantage of the symmetry of the orientation distribution function.
+        The 2D plane (i, j) is divided into quadrants with reflection symmetry.
+
+        Symmetry pattern::
+
+             \  1 /  (j=i diagonal)
+              \  /
+             2 \/ 4
+               /\
+              /  \
+             /  3 \ (j=self.N-i diagonal)
+
+        Args:
+            k (int): Component index (0=xx, 1=xy, 2=yy).
+            i (int): First spatial index (0 to self.N).
+            j (int): Second spatial index (0 to self.N).
+
+        Returns:
+            int: Linear index in the 1D storage array.
         """
         if j >= i and j >= (self.N - i):  # 1st Quadrant
             ind0 = k * self.SIZE
@@ -343,6 +448,13 @@ class TheorySCCR(QTheory):
             return self.ind(k, auxi, auxj)
 
     def set_yeq(self):
+        """Initialize equilibrium orientation distribution function.
+
+        Sets up the initial equilibrium values for the orientation tensor
+        components. At equilibrium, the orientation is isotropic with
+        each principal component equal to 1/3, except for the off-diagonal
+        (shear) component which is zero.
+        """
         aux = self.N / self.Z / 2.0
         ind = 0
         for k in range(3):
@@ -354,6 +466,22 @@ class TheorySCCR(QTheory):
                     ind += 1
 
     def pde_shear(self, y, t):
+        """Evaluate time derivative of orientation distribution function.
+
+        Computes dy/dt for the SCCR partial differential equations using
+        C library routines for performance. Updates progress indicator
+        during integration and handles user interruption.
+
+        Args:
+            y (array_like): Current state vector (orientation distribution).
+            t (float): Current time.
+
+        Returns:
+            array_like: Time derivative dy/dt.
+
+        Raises:
+            EndComputationRequested: If user requests calculation stop.
+        """
         if self.stop_theory_flag:
             raise EndComputationRequested
         if t >= self.tmax * self.count:
@@ -366,7 +494,17 @@ class TheorySCCR(QTheory):
         return dy_arr[:]
 
     def SCCR(self, f=None):
-        """Calculates the theory"""
+        """Calculate SCCR theory predictions for non-linear flow.
+
+        Main calculation routine that solves the SCCR equations for either
+        shear or extensional flow. Computes the stress response by integrating
+        the orientation distribution function evolution using a Runge-Kutta
+        method, then calculates stress from both tube theory and fast Rouse modes.
+
+        Args:
+            f (DataFile, optional): Data file containing experimental flow data
+                with time points and flow rate information.
+        """
         ft = f.data_table
         tt = self.tables[f.file_name_short]
         tt.num_columns = ft.num_columns

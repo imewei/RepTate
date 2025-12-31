@@ -26,7 +26,25 @@ continuous_rouse_time_interp.restype = None
 
 
 def approx_rouse_frequency(params):
-    """Continuous Rouse frequency with interpolation for N"""
+    """Calculate Rouse model rheological moduli in frequency domain with continuous N.
+
+    Computes storage (G') and loss (G'') moduli for an unentangled polymer melt
+    using the continuous Rouse model with interpolation for non-integer chain
+    lengths. The Rouse model treats polymers as Gaussian chains with bead-spring
+    dynamics and no entanglement constraints.
+
+    Args:
+        params: Tuple containing (G0, tau0, N, w) where:
+            - G0 (float): Plateau modulus or characteristic modulus (Pa)
+            - tau0 (float): Segmental relaxation time (s)
+            - N (float): Number of Rouse segments (can be non-integer)
+            - w (np.ndarray): Array of angular frequencies (rad/s)
+
+    Returns:
+        tuple: (gp, gpp) where:
+            - gp (np.ndarray): Storage modulus G'(w) values (Pa)
+            - gpp (np.ndarray): Loss modulus G''(w) values (Pa)
+    """
     G0, tau0, N, w = params
     n = len(w)
 
@@ -46,7 +64,22 @@ def approx_rouse_frequency(params):
 
 
 def approx_rouse_time(params):
-    """Continuous Rouse time with interpolation for N"""
+    """Calculate Rouse model relaxation modulus in time domain with continuous N.
+
+    Computes the stress relaxation modulus G(t) for an unentangled polymer melt
+    using the continuous Rouse model with interpolation for non-integer chain
+    lengths. Describes how polymer stress relaxes through bead-spring chain dynamics.
+
+    Args:
+        params: Tuple containing (G0, tau0, N, t) where:
+            - G0 (float): Plateau modulus or characteristic modulus (Pa)
+            - tau0 (float): Segmental relaxation time (s)
+            - N (float): Number of Rouse segments (can be non-integer)
+            - t (np.ndarray): Array of time values (s)
+
+    Returns:
+        np.ndarray: Relaxation modulus G(t) values (Pa)
+    """
     G0, tau0, N, t = params
     n = len(t)
 

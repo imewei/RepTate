@@ -162,7 +162,18 @@ class TheoryDSMLinear(QTheory):
             self.N_K = Mw / MK
 
     def tandelta(self, omega, data):
-        """Calculate the interpolated tan(delta)"""
+        """Calculate the interpolated tan(delta) at a given frequency.
+
+        Computes tan(delta) = G''/G' - 1 by interpolating the storage and loss moduli
+        from the experimental data at the specified frequency.
+
+        Args:
+            omega (float): Angular frequency at which to evaluate tan(delta).
+            data (np.ndarray): Experimental data array with columns [omega, G', G''].
+
+        Returns:
+            float: The value of tan(delta) - 1 at the specified frequency.
+        """
 
         wGp = data[:, 0]
         wGdp = data[:, 0]
@@ -172,7 +183,23 @@ class TheoryDSMLinear(QTheory):
         return float(jnp.interp(omega, wGdp, Gdp) / jnp.interp(omega, wGp, Gp) - 1)
 
     def solveNc(self, x, Gx, Mw, rho, R, T):
-        """Function to solve for Nc from frequency crossover data (linear chains only)"""
+        """Function to solve for Nc from frequency crossover data (linear chains only).
+
+        This function defines the equation to be solved for the number of clusters (Nc)
+        based on the crossover modulus from experimental data. The equation relates
+        the plateau modulus ratio to the number of entanglement clusters.
+
+        Args:
+            x (float): Number of clusters Nc (the unknown to be solved for).
+            Gx (float): Crossover modulus from experimental data (in Pa).
+            Mw (float): Molecular weight (in Da).
+            rho (float): Density (in g/cc).
+            R (float): Gas constant (in L Pa K^-1 mol^-1).
+            T (float): Temperature (in K).
+
+        Returns:
+            float: The residual of the equation to be solved (should be zero at the solution).
+        """
 
         GxGN0 = [9.191488, 2336.3116, 14232.0515, 33.81303697, 13102.47993, 1068.7744]
 
@@ -187,7 +214,22 @@ class TheoryDSMLinear(QTheory):
         return func * G0 - Gx / 1000  # Gx has units of Pa
 
     def Gslfx(self, crossover_limits, data):
-        """Function to find crossover frequency from limits"""
+        """Function to find crossover frequency and modulus from limits.
+
+        Solves for the frequency where tan(delta) = 1 (i.e., G' = G'') within
+        the specified frequency range and returns both the crossover frequency
+        and the corresponding storage modulus.
+
+        Args:
+            crossover_limits (list): Two-element list [lower_freq, upper_freq] bracketing
+                the crossover frequency.
+            data (np.ndarray): Experimental data array with columns [omega, G', G''].
+
+        Returns:
+            tuple: A tuple containing:
+                - omega_x (float): The crossover frequency.
+                - Gx (float): The storage modulus at the crossover frequency.
+        """
 
         sol = _root_solve(
             self.tandelta, crossover_limits[0], crossover_limits[1], args=(data,)
@@ -195,7 +237,18 @@ class TheoryDSMLinear(QTheory):
         return sol, float(jnp.interp(sol, data[:, 0], data[:, 1]))
 
     def find_crossover_limits(self, data):
-        """Find the lower and upper limits of the crossover frequency"""
+        """Find the lower and upper limits of the crossover frequency.
+
+        Identifies the frequency range where G' crosses G'' (where tan(delta) = 1)
+        by finding where G'' - G' changes sign, then returns a frequency range
+        of approximately 20 points centered on that location.
+
+        Args:
+            data (np.ndarray): Experimental data array with columns [omega, G', G''].
+
+        Returns:
+            list: Two-element list [lower_freq, upper_freq] bracketing the crossover frequency.
+        """
 
         omega = data[:, 0]
         Gp = data[:, 1]
@@ -219,7 +272,22 @@ class TheoryDSMLinear(QTheory):
         return omega_range
 
     def set_linear_params(self, Nc):
-        """Returns fixed parameters for calculating linear chain G* data"""
+        """Returns fixed parameters for calculating linear chain G* data.
+
+        Computes the CFSM and Rouse model parameters as functions of the number
+        of clusters (Nc) using empirical correlations from DSM simulations.
+
+        Args:
+            Nc (float): Number of entanglement clusters.
+
+        Returns:
+            list: A list containing:
+                - alpha (list): Power-law exponents for CFSM modes.
+                - tau (list): Boundary relaxation times for CFSM modes.
+                - alphaR (list): Power-law exponents for Rouse modes.
+                - tauR (list): Boundary relaxation times for Rouse modes.
+                - GR (float): Rouse modulus prefactor.
+        """
 
         alpha1 = [-0.00051, -0.0205]
         alpha2 = [0.00029, 0.109957]
@@ -254,7 +322,19 @@ class TheoryDSMLinear(QTheory):
         return [alpha, tau, alphaR, tauR, GR]
 
     def supp_prod(self, tau, alpha, i):
-        """Returns the product operator used in the G* calculation"""
+        """Returns the product operator used in the G* calculation.
+
+        Computes the supplementary product term appearing in the power-law
+        integration for the dynamic moduli.
+
+        Args:
+            tau (list): Boundary relaxation times.
+            alpha (list): Power-law exponents.
+            i (int): Index of the current power-law segment.
+
+        Returns:
+            float: The product of tau[j]^(alpha[j-1] - alpha[j]) for j from 1 to i.
+        """
         result = 1
         for j in range(1, i + 1):
             result *= tau[j] ** (alpha[j - 1] - alpha[j])
@@ -262,7 +342,22 @@ class TheoryDSMLinear(QTheory):
         return result
 
     def Gstar(self, omega, params, Rouse=False):
-        """Calculates G* using DSM or Rouse parameters"""
+        """Calculates G* using DSM or Rouse parameters.
+
+        Computes the complex modulus G* = G' + iG'' using power-law relaxation spectra
+        characterized by piecewise power-law segments. Uses hypergeometric functions
+        for the analytical integration over each power-law regime.
+
+        Args:
+            omega (float): Angular frequency.
+            params (list): Parameter list containing [alpha, tau, alphaR, tauR, GR, G0]
+                for CFSM and Rouse contributions.
+            Rouse (bool): If True, use Rouse parameters (alphaR, tauR, GR).
+                If False, use CFSM parameters (alpha, tau, G0). Defaults to False.
+
+        Returns:
+            complex: The complex modulus G' + iG'' at the specified frequency.
+        """
 
         if Rouse:
             alpha = params[2]
@@ -327,11 +422,15 @@ class TheoryDSMLinear(QTheory):
         return G0 * omega**2 * sumGp1 / sumGp2 + 1j * (G0 * omega * sumGdp1 / sumGdp2)
 
     def do_error(self, line):
-        """Report the error of the current theory
+        """Report the error of the current theory.
 
         Report the error of the current theory on all the files, taking into account the current selected xrange and yrange.
+        Also prints additional DSM-specific parameters (tau_K, beta, NK, Nc) for each file.
 
         File error is calculated as the mean square of the residual, averaged over all points in the file. Total error is the mean square of the residual, averaged over all points in all files.
+
+        Args:
+            line (str): Command line arguments (passed to base class).
         """
         super().do_error(line)
         self.print_DSM_params()

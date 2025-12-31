@@ -26,7 +26,30 @@ derivs_rp_blend_uext.restype = None
 
 
 def compute_derivs_shear(sigma, p, t, with_fene):
-    """Derivatives at time t"""
+    """Compute time derivatives of stress tensor components for shear flow.
+
+    Calculates the rate of change of the conformation tensor (stress) components
+    for a polymer blend under steady shear flow using the Rolie-Poly model. The
+    model combines convective constraint release and chain stretch dynamics.
+
+    Args:
+        sigma (np.ndarray): Flattened stress tensor components (3*n*n elements)
+                            representing upper triangular components of n modes
+        p (tuple): Parameter tuple (n, lmax, phi, taud, taus, beta, delta, gamma_dot, _):
+            - n (int): Number of relaxation modes
+            - lmax (float): Maximum chain stretch ratio
+            - phi (np.ndarray): Volume fractions of each mode
+            - taud (np.ndarray): Reptation/orientation times for each mode (s)
+            - taus (np.ndarray): Stretch relaxation times for each mode (s)
+            - beta (float): CCR parameter (convective constraint release strength)
+            - delta (float): Chain stretch parameter
+            - gamma_dot (float): Shear rate (1/s)
+        t (float): Current time value (s)
+        with_fene (float): Flag (0 or 1) to enable finite extensibility effects
+
+    Returns:
+        list: Time derivatives d(sigma)/dt as flattened array (3*n*n elements)
+    """
     c = 3
     n, lmax, phi, taud, taus, beta, delta, gamma_dot, _ = p
     # void derivs_rp_blend_shear(double *deriv, double *sigma, double *phi, double *taus, double *taud, double *p, double t)
@@ -54,7 +77,30 @@ def compute_derivs_shear(sigma, p, t, with_fene):
 
 
 def compute_derivs_uext(sigma, p, t, with_fene):
-    """Derivatives at time t"""
+    """Compute time derivatives of stress tensor components for uniaxial extension.
+
+    Calculates the rate of change of the conformation tensor (stress) components
+    for a polymer blend under uniaxial extensional flow using the Rolie-Poly model.
+    Uniaxial extension has fewer independent stress components (2 vs 3 for shear).
+
+    Args:
+        sigma (np.ndarray): Flattened stress tensor components (2*n*n elements)
+                            for axial and radial directions of n modes
+        p (tuple): Parameter tuple (n, lmax, phi, taud, taus, beta, delta, gamma_dot, _):
+            - n (int): Number of relaxation modes
+            - lmax (float): Maximum chain stretch ratio
+            - phi (np.ndarray): Volume fractions of each mode
+            - taud (np.ndarray): Reptation/orientation times for each mode (s)
+            - taus (np.ndarray): Stretch relaxation times for each mode (s)
+            - beta (float): CCR parameter (convective constraint release strength)
+            - delta (float): Chain stretch parameter
+            - gamma_dot (float): Extension rate (1/s)
+        t (float): Current time value (s)
+        with_fene (float): Flag (0 or 1) to enable finite extensibility effects
+
+    Returns:
+        list: Time derivatives d(sigma)/dt as flattened array (2*n*n elements)
+    """
     c = 2
     n, lmax, phi, taud, taus, beta, delta, gamma_dot, _ = p
     # void derivs_rp_blend_shear(double *deriv, double *sigma, double *phi, double *taus, double *taud, double *p, double t)

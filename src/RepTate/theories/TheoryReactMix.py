@@ -93,9 +93,15 @@ class TheoryReactMix(QTheory):
         self.btn_prio_senio.setDisabled(True)
 
     def theory_buttons_disabled(self, state):
-        """
-        Enable/Disable theory buttons, typically called at the start and stop of a calculation.
-        This is relevant in multithread mode only.
+        """Enable/Disable theory buttons during calculations.
+
+        Controls the enabled state of theory-specific buttons, typically called at
+        the start and stop of a calculation to prevent user interaction during
+        computation. This is relevant in multithread mode only.
+
+        Args:
+            state (bool): True to disable buttons (calculation running),
+                False to enable (calculation finished).
         """
         self.save_bob_configuration_button.setDisabled(state)
 
@@ -108,12 +114,32 @@ class TheoryReactMix(QTheory):
         rgt.handle_edit_bob_settings(self)
 
     def handle_btn_prio_senio(self, checked):
-        """Change do_priority_seniority"""
+        """Handle priority-seniority button toggle.
+
+        Updates the priority-seniority calculation mode for polymer mixing when the
+        corresponding toolbar button is toggled.
+
+        Args:
+            checked (bool): True if priority-seniority mode should be enabled,
+                False otherwise.
+        """
         # rgt.handle_btn_prio_senio(self, checked)
 
 
     def Calc(self, f=None):
-        """ReactMix function"""
+        """Calculate molecular weight distribution for a mixture of polymer reactions.
+
+        Combines polymer distributions from multiple active React theories according to
+        user-specified weight ratios. Performs multi-polymer binning to create a mixed
+        molecular weight distribution and calculates its moments (Mn, Mw, branching).
+
+        Args:
+            f (File, optional): RepTate File object to store results. Defaults to None.
+
+        Returns:
+            int or None: Number of bins in the discretized mixture minus one if successful,
+                None if calculation fails or is cancelled.
+        """
         self.calcexists = False
         nbins = int(np.round(self.parameters["nbin"].value))
         rch.set_do_prio_senio(ct.c_bool(self.do_priority_seniority))
@@ -203,11 +229,26 @@ class TheoryReactMix(QTheory):
         return rch.bab_global.multi_nummwdbins - 1
 
     def do_error(self, line):
-        """This theory does not calculate the error"""
+        """This theory does not calculate the error.
+
+        The ReactMix theory combines distributions rather than fitting to data,
+        so error calculation is not applicable.
+
+        Args:
+            line (str): Command line arguments (unused).
+        """
         pass
 
     def set_extra_data(self, extra_data):
-        """Called when loading a project, set saved parameter values"""
+        """Called when loading a project to restore saved parameter values.
+
+        Restores the mixing ratios, inclusion states, and other configuration from
+        a saved RepTate project file.
+
+        Args:
+            extra_data (dict): Dictionary containing saved parameter values including
+                'ratios' (list of weight ratios) and 'include' (list of inclusion flags).
+        """
         self.ratios = extra_data["ratios"]
         self.include = extra_data["include"]
         rgt.set_extra_data(self, extra_data)

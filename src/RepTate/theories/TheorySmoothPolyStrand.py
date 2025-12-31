@@ -453,6 +453,14 @@ class TheorySmoothPolyStrand(QTheory):
                                 'Wrote FlowSolve parameters in \"%s\"' % fpath)
 
     def handle_with_gcorr_button(self, checked):
+        """Handle modulus correction button toggle.
+
+        Enables or disables the Likhtman-McLeish CLF modulus correction based on
+        effective entanglement numbers. Requires Zeff data from MWD to function.
+
+        Args:
+            checked: True if button is checked (enable correction), False otherwise.
+        """
         if checked:
             if len(self.Zeff) > 0:
                 # if Zeff contains something
@@ -470,6 +478,14 @@ class TheorySmoothPolyStrand(QTheory):
         )
 
     def handle_with_noqu_button(self, checked):
+        """Handle neglect quiescent nucleation button toggle.
+
+        When enabled, subtracts the quiescent nucleation rate from total nucleation,
+        assuming all quiescent nucleation occurs from heterogeneous nuclei.
+
+        Args:
+            checked: True if button is checked (neglect quiescent), False otherwise.
+        """
         if checked:
             
             self.with_noqu = NoquMode.with_noqu
@@ -483,6 +499,14 @@ class TheorySmoothPolyStrand(QTheory):
 
         
     def handle_with_single_button(self, checked):
+        """Handle average to single species button toggle.
+
+        When enabled, pre-averages chain configuration over all species in the melt
+        and computes nucleation rate using a single species based on this average.
+
+        Args:
+            checked: True if button is checked (single species mode), False otherwise.
+        """
         if checked:
             
             self.with_single = SingleSpeciesMode.with_single
@@ -495,6 +519,14 @@ class TheorySmoothPolyStrand(QTheory):
         )
 
     def handle_with_fene_button(self, checked):
+        """Handle finite extensibility button toggle.
+
+        Enables or disables finite extensibility (FENE) constraint with maximum
+        stretch ratio lmax. When enabled, displays and activates the lmax parameter.
+
+        Args:
+            checked: True if button is checked (enable FENE), False otherwise.
+        """
         if checked:
             self.with_fene = FeneMode.with_fene
             self.with_fene_button.setChecked(True)
@@ -515,7 +547,11 @@ class TheorySmoothPolyStrand(QTheory):
         )
 
     def Qhide_theory_extras(self, show):
-        """Uncheck the LVE button. Called when curent theory is changed"""
+        """Uncheck the LVE button. Called when curent theory is changed.
+
+        Args:
+            show: True to show theory extras, False to hide them.
+        """
         if show:
             self.LVEenvelopeseries.set_visible(self.linearenvelope.isChecked())
         else:
@@ -526,6 +562,14 @@ class TheorySmoothPolyStrand(QTheory):
         self.parent_dataset.actionHorizontal_Limits.setDisabled(show)
 
     def show_linear_envelope(self, state):
+        """Toggle visibility of linear viscoelastic envelope.
+
+        Plots and displays the LVE envelope when enabled, representing the linear
+        response limit for comparison with nonlinear flow predictions.
+
+        Args:
+            state: True to show envelope, False to hide it.
+        """
         self.plot_theory_stuff()
         self.extra_graphic_visible(state)
         # self.LVEenvelopeseries.set_visible(self.linearenvelope.isChecked())
@@ -533,14 +577,22 @@ class TheorySmoothPolyStrand(QTheory):
         # self.parent_dataset.parent_application.update_plot()
 
     def select_shear_flow(self):
+        """Set flow mode to shear flow and update UI button."""
         self.flow_mode = FlowMode.shear
         self.tbutflow.setDefaultAction(self.shear_flow_action)
 
     def select_extensional_flow(self):
+        """Set flow mode to uniaxial extensional flow and update UI button."""
         self.flow_mode = FlowMode.uext
         self.tbutflow.setDefaultAction(self.extensional_flow_action)
 
     def get_modes_reptate(self):
+        """Get Maxwell modes from a Discretize MWD theory in RepTate.
+
+        Searches all open applications/datasets for Discretize MWD theories and
+        presents a dialog for the user to select one. Updates this theory's modes
+        based on the selected molecular weight distribution.
+        """
         apmng = self.parent_dataset.parent_application.parent_manager
         get_dict = {}
         for app in apmng.applications.values():
@@ -577,6 +629,11 @@ class TheorySmoothPolyStrand(QTheory):
         # self.parent_dataset.handle_actionCalculate_Theory()
 
     def edit_modes_window(self):
+        """Open dialog to manually edit mode parameters.
+
+        Displays an interactive table for editing volume fractions (phi), terminal
+        times (tauD), and Rouse times (tauR) for all modes.
+        """
         nmodes = self.parameters["nmodes"].value
         phi = np.zeros(nmodes)
         taud = np.zeros(nmodes)
@@ -612,6 +669,11 @@ class TheorySmoothPolyStrand(QTheory):
                 self.handle_actionCalculate_Theory()
 
     def edit_mwd_modes(self):
+        """Open dialog to edit molecular weight distribution data.
+
+        Displays an interactive table for editing molecular weights and volume
+        fractions, then converts to Maxwell modes using the dilution theory.
+        """
         d = EditMWDDialog(self, self.MWD_m, self.MWD_phi, 200)
         if d.exec_():
             nmodes = d.table.rowCount()
@@ -688,7 +750,12 @@ class TheorySmoothPolyStrand(QTheory):
 
 
     def set_extra_data(self, extra_data):
-        """Set extra data when loading project"""
+        """Set extra data when loading project.
+
+        Args:
+            extra_data: Dictionary containing MWD data, Zeff values, and button states
+                (with_fene, with_gcorr, with_noqu, with_single).
+        """
         self.MWD_m = extra_data['MWD_m']
         self.MWD_phi = extra_data['MWD_phi']
         self.Zeff = extra_data['Zeff']
@@ -737,18 +804,33 @@ class TheorySmoothPolyStrand(QTheory):
         self.LVEenvelopeseries.remove()
 
     def show_theory_extras(self, show=False):
-        """Called when the active theory is changed"""
+        """Called when the active theory is changed.
+
+        Args:
+            show: True to show theory extras (LVE envelope), False to hide them.
+        """
         self.Qhide_theory_extras(show)
         # self.extra_graphic_visible(show)
 
     def extra_graphic_visible(self, state):
-        """Change visibility of theory helpers"""
+        """Change visibility of theory helpers.
+
+        Args:
+            state: True to make LVE envelope visible, False to hide it.
+        """
         self.view_LVEenvelope = state
         self.LVEenvelopeseries.set_visible(state)
         self.parent_dataset.parent_application.update_plot()
 
     def get_modes(self):
-        """Get the values of Maxwell Modes from this theory"""
+        """Get the values of Maxwell Modes from this theory.
+
+        Returns:
+            tuple: A 3-tuple containing:
+                - tau (np.ndarray): Array of terminal relaxation times for each mode.
+                - G (np.ndarray): Array of moduli for each mode (GN0 * phi_i).
+                - success (bool): Always True indicating successful retrieval.
+        """
         nmodes = self.parameters["nmodes"].value
         tau = np.zeros(nmodes)
         G = np.zeros(nmodes)
@@ -780,7 +862,15 @@ class TheorySmoothPolyStrand(QTheory):
         )
 
     def set_modes(self, tau, G):
-        """Set the values of Maxwell Modes from another theory"""
+        """Set the values of Maxwell Modes from another theory.
+
+        Args:
+            tau: Array of relaxation times for each mode.
+            G: Array of moduli for each mode.
+
+        Returns:
+            bool: Always True indicating successful mode setting.
+        """
         nmodes = len(tau)
         self.set_param_value("nmodes", nmodes)
         sum_G = G.sum()
@@ -792,16 +882,41 @@ class TheorySmoothPolyStrand(QTheory):
         return True
 
     def fZ(self, z):
-        """CLF correction function Likthman-McLeish (2002)"""
+        """CLF correction function Likthman-McLeish (2002).
+
+        Args:
+            z: Number of entanglements.
+
+        Returns:
+            float: Constraint release correction factor for relaxation time.
+        """
         return 1 - 2 * 1.69 / sqrt(z) + 4.17 / z - 1.55 / (z * sqrt(z))
 
     def gZ(self, z):
-        """CLF correction function for modulus Likthman-McLeish (2002)"""
+        """CLF correction function for modulus Likthman-McLeish (2002).
+
+        Args:
+            z: Number of entanglements.
+
+        Returns:
+            float: Constraint release correction factor for plateau modulus.
+        """
         return 1 - 1.69 / sqrt(z) + 2.0 / z - 1.24 / (z * sqrt(z))
 
     def sigmadot_shear(self, sigma, t, p):
-        """Rolie-Poly differential equation under *shear* flow
-        with stretching and finite extensibility if selected"""
+        """Rolie-Poly differential equation under shear flow.
+
+        Computes time derivatives of conformation tensor components under shear flow
+        with stretching and finite extensibility if selected.
+
+        Args:
+            sigma: Current state vector of conformation tensor components.
+            t: Current time.
+            p: Parameter vector containing nmodes, lmax, phi, tauD, tauR, beta, delta, flow_rate, tmax.
+
+        Returns:
+            np.ndarray: Time derivatives of sigma components (dsigma/dt).
+        """
         if self.stop_theory_flag:
             raise EndComputationRequested
         tmax = p[-1]
@@ -817,8 +932,19 @@ class TheorySmoothPolyStrand(QTheory):
         return rpch.compute_derivs_shear(sigma, p, t, wfene)
 
     def sigmadot_uext(self, sigma, t, p):
-        """Rolie-Poly differential equation under *uniaxial elongational* flow
-        with stretching and finite extensibility if selected"""
+        """Rolie-Poly differential equation under uniaxial elongational flow.
+
+        Computes time derivatives of conformation tensor components under extensional flow
+        with stretching and finite extensibility if selected.
+
+        Args:
+            sigma: Current state vector of conformation tensor components.
+            t: Current time.
+            p: Parameter vector containing nmodes, lmax, phi, tauD, tauR, beta, delta, flow_rate, tmax.
+
+        Returns:
+            np.ndarray: Time derivatives of sigma components (dsigma/dt).
+        """
         if self.stop_theory_flag:
             raise EndComputationRequested
         tmax = p[-1]
@@ -835,22 +961,56 @@ class TheorySmoothPolyStrand(QTheory):
         return rpch.compute_derivs_uext(sigma, p, t, wfene)
 
     def calculate_fene(self, l_square, lmax):
-        """calculate finite extensibility function value"""
+        """Calculate finite extensibility function value.
+
+        Computes the FENE (Finitely Extensible Nonlinear Elastic) correction factor
+        based on the Warner approximation.
+
+        Args:
+            l_square: Squared stretch ratio (lambda^2).
+            lmax: Maximum stretch ratio (lambda_max).
+
+        Returns:
+            float: FENE correction factor.
+        """
         ilm2 = 1.0 / (lmax * lmax)  # 1/lambda_max^2
         l2_lm2 = l_square * ilm2  # (lambda/lambda_max)^2
         return (3.0 - l2_lm2) / (1.0 - l2_lm2) * (1.0 - ilm2) / (3.0 - ilm2)
 
     def computeFel( self, Fxx, Fyy, Fxy):
-        """Converts RDP configurations into a free energy change (via nematic order parameter"""
+        """Convert RDP configurations into free energy change via nematic order parameter.
+
+        Computes the flow-induced free energy reduction based on chain conformation
+        using the Kuhn segment nematic order parameter.
+
+        Args:
+            Fxx: xx component of conformation tensor.
+            Fyy: yy component of conformation tensor.
+            Fxy: xy component of conformation tensor.
+
+        Returns:
+            float: Free energy change per chain due to flow-induced alignment.
+        """
         Gamma = self.parameters['Gamma'].value
         Ne = self.parameters['Ne'].value
 
         tmp= Fxx/2 + Fyy/2 + np.sqrt( ((Fxx-Fyy)/2.0)**2 + Fxy**2 ) - 1
-		    
+
         return Gamma* tmp/Ne
 
     def computeQuiescentBarrier( self ):
-        """Calculates the GO model quiescent barrier and nucleation rate"""
+        """Calculate the GO model quiescent barrier and nucleation rate.
+
+        Computes the free energy landscape, barrier height, and nucleation rate
+        for quiescent crystallization using the Granasy-Oxtoby (GO) model.
+
+        Returns:
+            tuple: A 4-tuple containing:
+                - landscape (list): Free energy barrier landscape vs. nucleus size.
+                - NqRate (float): Quiescent nucleation rate (μm^-3 s^-1).
+                - quiescent_height (float): Barrier height in units of k_B T.
+                - nStar (int): Critical nucleus size in number of monomers.
+        """
         epsilonB = self.parameters['epsilonB'].value
         muS = self.parameters['muS'].value
         rhoK = self.parameters['rhoK'].value
@@ -900,7 +1060,16 @@ class TheorySmoothPolyStrand(QTheory):
 
 
     def RolieDoublePoly_Crystal(self, f=None):
-        """Calculate the theory"""
+        """Calculate the theory predictions for flow-induced crystallization.
+
+        Main computation routine that:
+        1. Solves Rolie-Double-Poly equations for chain conformation under flow
+        2. Computes flow-induced nucleation rates using smooth-polySTRAND model
+        3. Calculates crystal growth using Schneider rate equations
+
+        Args:
+            f: File object containing experimental data and flow parameters.
+        """
         ft = f.data_table
         tt = self.tables[f.file_name_short]
         tt.num_columns = ft.num_columns
@@ -1140,7 +1309,18 @@ class TheorySmoothPolyStrand(QTheory):
 
         
     def set_param_value(self, name, value):
-        """Set the value of theory parameters"""
+        """Set the value of theory parameters.
+
+        Handles dynamic parameter creation/deletion when nmodes changes.
+
+        Args:
+            name: Parameter name to set.
+            value: New parameter value.
+
+        Returns:
+            tuple: (message, success) where message is an error string (empty on success)
+                and success is a boolean indicating if the operation succeeded.
+        """
         if (name == "nmodes"):
             oldn = self.parameters["nmodes"].value
             # self.spinbox.setMaximum(int(value))
@@ -1185,7 +1365,11 @@ class TheorySmoothPolyStrand(QTheory):
 
     
     def do_fit(self, line):
-        """Minimisation procedure disabled in this theory"""
+        """Minimisation procedure disabled in this theory.
+
+        Args:
+            line: Command line arguments (unused, required by interface).
+        """
         self.Qprint(
             "<font color=red><b>Minimisation procedure disabled in this theory</b></font>"
         )

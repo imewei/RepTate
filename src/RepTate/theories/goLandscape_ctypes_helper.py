@@ -23,7 +23,20 @@ python_c_landscape = landscape_function_lib.landscape
 python_c_landscape.restype = c_double
 
 def GO_Landscape(NT, epsilon, mu):
-    """Wrapper functions to call c code to compute quiescent landscape"""
+    """Compute the quiescent free energy landscape for polymer chain configurations.
+
+    Calculates the dimensionless free energy of a polymer chain in a quiescent
+    (unstressed) state using the Graham-Olmsted landscape theory. This represents
+    the potential energy landscape that governs chain conformations in the tube.
+
+    Args:
+        NT (float): Number of tube segments (chain length in tube diameters)
+        epsilon (float): Confinement parameter representing tube constraint strength
+        mu (float): Chemical potential or dimensionless chain tension parameter
+
+    Returns:
+        float: Dimensionless free energy of the chain configuration
+    """
     c_doub_NT = (c_double)(NT)
     c_doub_mu = (c_double)(mu)
     c_doub_epsilon = (c_double)(epsilon)

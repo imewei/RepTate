@@ -201,10 +201,25 @@ class TheoryWLFShift(QTheory):
         self.dir_start = os.path.join(RepTate.root_dir, "data")
 
     def print_activation_energy(self):
+        """Print Arrhenius activation energy from WLF shift factors.
+
+        Performs an Arrhenius fit to the horizontal shift factors and calculates
+        activation energy with 95% confidence intervals using Student's t-distribution.
+        Results are printed to the theory output window, grouped by molecular weight.
+        """
         # Evaluate activation ennergy from Arrhenius fit
         M_set = list(set([l[-1] for l in self.shift_factor_dic.values()]))
 
         def f(invT, Ea):
+            """Arrhenius equation for activation energy fitting.
+
+            Args:
+                invT (float): Inverse temperature in K^-1.
+                Ea (float): Activation energy in J/mol.
+
+            Returns:
+                float: Natural logarithm of horizontal shift factor ln(aT).
+            """
             return Ea / 8.314 * (invT - 1 / (273.15 + self.parameters["Tr"].value))
 
         Ea_list = []
@@ -237,9 +252,19 @@ class TheoryWLFShift(QTheory):
             self.Qprint(table)
 
     def do_vertical_shift(self):
+        """Toggle vertical shift parameter based on toolbar button state.
+
+        Updates the 'vert' parameter to enable or disable vertical shifting
+        of data according to the density-temperature correction factor bT.
+        """
         self.set_param_value("vert", self.verticalshift.isChecked())
 
     def do_isofrictional(self):
+        """Toggle isofrictional state parameter based on toolbar button state.
+
+        Updates the 'iso' parameter to enable or disable shifting to an isofrictional
+        state by applying molecular weight and vinyl content corrections to Tg.
+        """
         self.set_param_value("iso", self.isofrictional.isChecked())
 
     # def do_save_dialog(self):
@@ -248,6 +273,13 @@ class TheoryWLFShift(QTheory):
     #             self, "Select Directory to save Master curves"))
     #     self.do_save(folder)
     def save_shift_factors(self):
+        """Save horizontal and vertical shift factors to .ttsf files.
+
+        Opens a dialog for the user to select a folder, then writes shift factor files
+        (one per molecular weight) containing temperature, horizontal shift aT, and
+        vertical shift bT for all shifted data files. Files are saved with names
+        like 'shift_factors_Mw<value>.ttsf'.
+        """
         dilogue_name = "Select Folder for Saving Shift Factors"
         folder = QFileDialog.getExistingDirectory(self, dilogue_name, self.dir_start)
         if not os.path.isdir(folder):
@@ -289,7 +321,16 @@ class TheoryWLFShift(QTheory):
         QMessageBox.information(self, "Saved Files", msg)
 
     def TheoryWLFShift(self, f=None):
-        """Calculate the theory"""
+        """Calculate WLF shift for a single file.
+
+        Applies horizontal (aT) and vertical (bT) shift factors to the data based on
+        WLF equation parameters, with optional corrections for isofrictional state
+        and thermal expansion.
+
+        Args:
+            f (DataFile): File object containing rheological data and parameters
+                including temperature T and molecular weight Mw.
+        """
         ft = f.data_table
         tt = self.tables[f.file_name_short]
         tt.num_columns = ft.num_columns
@@ -326,15 +367,21 @@ class TheoryWLFShift(QTheory):
         self.shift_factor_dic[f.file_name_short] = [Tf, aT, bT, Mw]
 
     def do_error(self, line):
-        """Override the error calculation for TTS
+        """Override the error calculation for TTS.
 
-        The error is calculated as the vertical distance between theory points, in the current view,\
-        calculated over all possible pairs of theory tables, when the theories overlap in the horizontal direction and\
+        The error is calculated as the vertical distance between theory points, in the current view,
+        calculated over all possible pairs of theory tables, when the theories overlap in the horizontal direction and
         they correspond to files with the same Mw (if the parameters Mw2 and phi exist, their values are also
         used to classify the error). 1/2 of the error is added to each file.
-        Report the error of the current theory on all the files.\n\
-        File error is calculated as the mean square of the residual, averaged over all calculated points in the shifted tables.\n\
+        Report the error of the current theory on all the files.
+        File error is calculated as the mean square of the residual, averaged over all calculated points in the shifted tables.
         Total error is the mean square of the residual, averaged over all points considered in all files.
+
+        Args:
+            line (str): Command line argument; if empty, prints detailed error table.
+
+        Returns:
+            float: Total mean squared error averaged over all overlapping data points.
 
         """
         total_error = 0
@@ -463,7 +510,15 @@ class TheoryWLFShift(QTheory):
         return total_error
 
     def func_fitTTS(self, *param_in):
-        """Override the fit function"""
+        """Override the fit function for TTS parameter optimization.
+
+        Args:
+            *param_in: Variable length argument list containing parameter values
+                to be optimized (typically B1 and B2 WLF parameters).
+
+        Returns:
+            float: Total mean squared error for current parameter values.
+        """
         ind = 0
         k = list(self.parameters.keys())
         k.sort()
@@ -477,7 +532,15 @@ class TheoryWLFShift(QTheory):
         return error
 
     def do_fit(self, line):
-        """Minimize the error"""
+        """Minimize the error by optimizing WLF parameters.
+
+        Uses Nelder-Mead simplex algorithm to find optimal B1 and B2 parameters
+        that minimize the overlap error between shifted curves. Prints fitting
+        progress and results to the theory output window.
+
+        Args:
+            line (str): Command line arguments (unused in current implementation).
+        """
         self.is_fitting = True
         start_time = time.time()
         # view = self.parent_dataset.parent_application.current_view
@@ -546,7 +609,16 @@ class TheoryWLFShift(QTheory):
     #     return completions
 
     def do_save(self, line, extra_txt=""):
-        """Save the results from WLFShift theory predictions to a TTS file"""
+        """Save the results from WLFShift theory predictions to TTS files.
+
+        Creates master curve files (one per unique combination of Mw, Mw2, phi, phi2)
+        containing all shifted data at the reference temperature. Files include
+        metadata with file parameters and WLF theory parameters.
+
+        Args:
+            line (str): Directory path for saving files; uses dataset directory if empty.
+            extra_txt (str): Additional text to append to filename before extension.
+        """
         nfiles = len(self.parent_dataset.files)
         Mw = []
         for i in range(nfiles):

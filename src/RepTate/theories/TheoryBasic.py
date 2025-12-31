@@ -120,12 +120,29 @@ class TheoryPolynomial(QTheory):
             self.handle_spinboxValueChanged)
 
     def handle_spinboxValueChanged(self, value):
-        """Handle a change of the parameter 'nmode'"""
+        """Handle a change of the polynomial degree parameter.
+
+        Updates the theory parameter 'n' (polynomial degree) when the spinbox value changes.
+
+        Args:
+            value (int): New polynomial degree value from the spinbox.
+        """
         self.set_param_value("n", value)
 
 
     def set_param_value(self, name, value):
-        """Change a parameter value, in particular *n*
+        """Change a parameter value, in particular the polynomial degree *n*.
+
+        When the degree changes, this method recreates all coefficient parameters (A0, A1, etc.)
+        while preserving existing values where possible.
+
+        Args:
+            name (str): Name of the parameter to change.
+            value: New value for the parameter.
+
+        Returns:
+            tuple[str, bool]: A tuple containing (message, success) where message describes
+                the operation result and success indicates if the operation completed successfully.
         """
         if name == 'n':
             nold = self.parameters["n"].value
@@ -442,16 +459,40 @@ class TheoryAlgebraicExpression(QTheory):
             self.handle_expressionChanged)
 
     def handle_spinboxValueChanged(self, value):
-        """Handle a change of the parameter 'n'"""
+        """Handle a change of the number of parameters.
+
+        Updates the theory parameter 'n' (number of parameters) when the spinbox value changes.
+
+        Args:
+            value (int): New number of parameters from the spinbox.
+        """
         self.set_param_value("n", value)
 
     def handle_expressionChanged(self, item):
-        """Handle a change in the algebraic expression"""
+        """Handle a change in the algebraic expression from the combo box.
+
+        Updates the theory parameter 'expression' when the user selects a different
+        expression from the combo box.
+
+        Args:
+            item (int): Index of the selected item in the combo box.
+        """
         self.set_param_value("expression", self.expressionCB.itemText(item))
 
 
     def set_param_value(self, name, value):
-        """Change a parameter value, in particular *n*
+        """Change a parameter value, in particular *n* (number of parameters).
+
+        When the number of parameters changes, this method recreates all coefficient
+        parameters (A0, A1, etc.) while preserving existing values where possible.
+
+        Args:
+            name (str): Name of the parameter to change.
+            value: New value for the parameter.
+
+        Returns:
+            tuple[str, bool]: A tuple containing (message, success) where message describes
+                the operation result and success indicates if the operation completed successfully.
         """
         if name == 'n':
             nold = self.parameters["n"].value
@@ -555,5 +596,13 @@ class TheoryAlgebraicExpression(QTheory):
 
 
     def do_error(self, line):
+        """Calculate and display the error of the theory fit.
+
+        Calls the parent class error calculation method and prints the current
+        algebraic expression to the output.
+
+        Args:
+            line (str): Command line arguments for error calculation (typically empty for GUI).
+        """
         super().do_error(line)
         self.Qprint("%s: <b>%s</b>" % (self.thname, self.parameters["expression"].value))

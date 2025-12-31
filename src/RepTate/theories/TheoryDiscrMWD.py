@@ -167,7 +167,14 @@ class TheoryDiscrMWD(QTheory):
         self.parent_dataset.actionHorizontal_Limits.setDisabled(True)
 
     def handle_spinboxValueChanged(self, value):
-        """Handle a change of the parameter 'nbin'"""
+        """Handle a change of the parameter 'nbin' from the spinbox widget.
+
+        Updates the number of molecular weight bins when the user changes the
+        spinbox value in the theory toolbar.
+
+        Args:
+            value (int): New number of bins for discretizing the MWD.
+        """
         self.spinbox.setValue(value)
         self.set_param_value("nbin", value)
         self.update_parameter_table()
@@ -182,13 +189,29 @@ class TheoryDiscrMWD(QTheory):
         self.parent_dataset.actionHorizontal_Limits.setDisabled(state)
 
     def handle_view_bins_button_triggered(self, checked):
-        """Set visibility of bins"""
+        """Set visibility of bins and associated graphical elements.
+
+        Toggles the visibility of the bin edges, Mw tick marks, and bar plot when
+        the view bins button is clicked in the theory toolbar.
+
+        Args:
+            checked (bool): True if the button is checked (bins should be visible),
+                False otherwise.
+        """
         self.graphic_bins_visible(checked)
         self.set_bar_plot(True)  # leave the bar plot on
         self.parent_dataset.parent_application.update_plot()
 
     def do_save(self, dir, extra_txt=""):
-        """Save discrete MWD"""
+        """Save discretized molecular weight distribution to a text file.
+
+        Writes the discretized MWD bins (molecular weight and phi values) along with
+        calculated moments (Mn, Mw, PDI, Mz/Mw) to a text file in the specified directory.
+
+        Args:
+            dir (str): Directory path where the output file will be saved.
+            extra_txt (str, optional): Additional text to append to the filename. Defaults to "".
+        """
         nbin = self.parameters["nbin"].value
         file_out = os.path.join(
             dir,
@@ -239,7 +262,20 @@ class TheoryDiscrMWD(QTheory):
             self.current_file = f
 
     def set_param_value(self, name, new_value):
-        """Set value of theory parameter"""
+        """Set value of theory parameter and handle bin reconfiguration.
+
+        Overrides the parent method to handle special cases when nbin, logmmin, or
+        logmmax parameters are changed. When nbin changes, bin edges are regenerated.
+        When logmmin or logmmax change, bins are respaced equally in log space.
+
+        Args:
+            name (str): Name of the parameter to set.
+            new_value (float or int): New value for the parameter.
+
+        Returns:
+            tuple: (message, success) where message is an error message string (empty if successful)
+                and success is a boolean indicating whether the operation succeeded.
+        """
         if name == "nbin":
             nbinold = self.parameters["nbin"].value
         message, success = super().set_param_value(name, new_value)
@@ -338,12 +374,28 @@ class TheoryDiscrMWD(QTheory):
         self.graphic_bins.remove()
 
     def show_theory_extras(self, show=False):
-        """Called when the active theory is changed"""
+        """Called when the active theory is changed to show/hide theory-specific elements.
+
+        Controls visibility of bin graphics and enables/disables theory-specific buttons
+        when switching between different theories in the dataset.
+
+        Args:
+            show (bool, optional): True to show theory extras, False to hide. Defaults to False.
+        """
         self.Qhide_theory_extras(show)
         self.graphic_bins_visible(show)
 
     def graphic_bins_visible(self, state):
-        """Set visibility of graphic helpers"""
+        """Set visibility of graphic helpers including bin edges, Mw markers, and bar plots.
+
+        Controls the visibility of all graphical elements associated with the discretized
+        MWD: movable bin edges, Mw tick marks, and the bar plot representation. Also
+        connects/disconnects the draggable bin functionality.
+
+        Args:
+            state (bool): True to make graphics visible and enable interaction,
+                False to hide and disable.
+        """
         self.view_bins = state
         self.graphic_bins.set_visible(state)  # movable edge bins
         self.Mw_bin.set_visible(state)  # Mw tick marks
@@ -357,7 +409,15 @@ class TheoryDiscrMWD(QTheory):
         self.parent_dataset.parent_application.update_plot()
 
     def drag_bin(self, newx, newy):
-        """Move edges of the bins"""
+        """Move edges of the bins when user drags bin edge markers.
+
+        Updates bin edge positions based on user interaction with draggable markers,
+        sorts the positions to maintain order, and recalculates the discretized MWD.
+
+        Args:
+            newx (numpy.ndarray): New x-coordinates (molecular weights) for bin edges.
+            newy (numpy.ndarray): New y-coordinates (unused but required by draggable interface).
+        """
         nbin = self.parameters["nbin"].value
         newx = np.sort(newx)
         self.parameters["logmmin"].value = np.log10(newx[0])
@@ -368,15 +428,45 @@ class TheoryDiscrMWD(QTheory):
         self.update_parameter_table()
 
     def do_error(self, line):
-        """This theory does not calculate the error"""
+        """This theory does not calculate the error.
+
+        The discretization theory transforms data rather than fitting it, so error
+        calculation is not applicable.
+
+        Args:
+            line (str): Command line arguments (unused).
+        """
         pass
 
     def do_fit(self, line=""):
-        """Fit not allowed in this theory"""
+        """Fit not allowed in this theory.
+
+        The discretization theory is a transformation method, not a fitting method,
+        so parameter optimization is not applicable.
+
+        Args:
+            line (str, optional): Command line arguments (unused). Defaults to "".
+        """
         pass
 
     def calculate_moments(self, f, line=""):
-        """Calculate the moments Mn, Mw, and Mz of a molecular mass distribution"""
+        """Calculate the moments Mn, Mw, and Mz of a molecular mass distribution.
+
+        Computes the number-average molecular weight (Mn), weight-average molecular
+        weight (Mw), z-average molecular weight (Mz), polydispersity index (PDI = Mw/Mn),
+        and Mz/Mw ratio from a discretized MWD.
+
+        Args:
+            f (numpy.ndarray): 2D array where f[:, 0] contains molecular weights
+                and f[:, 1] contains weight fractions.
+            line (str, optional): Controls output behavior. If "discretized", updates
+                theory parameters with calculated moments. If empty, returns moments
+                as tuple. Otherwise, prints formatted table. Defaults to "".
+
+        Returns:
+            tuple or None: If line is empty string, returns (Mn, Mw, PDI, Mz/Mw) in kg/mol.
+                Otherwise returns None and prints results.
+        """
         n = f[:, 0].size
         Mw = 0
         tempMn = 0
@@ -436,7 +526,18 @@ class TheoryDiscrMWD(QTheory):
             self.Qprint(table)
 
     def discretise_mwd(self, f=None):
-        """Discretize a molecular weight distribution"""
+        """Discretize a molecular weight distribution into bins.
+
+        Converts a continuous MWD into a discrete representation with a specified
+        number of bins. Each bin is characterized by its weight-average molecular
+        weight and weight fraction. The method normalizes the distribution, computes
+        moments for both input and discretized distributions, and stores results in
+        the theory table.
+
+        Args:
+            f (File, optional): RepTate File object containing the MWD data to discretize.
+                Defaults to None.
+        """
         self.extra_data["current_fname"] = f.file_name_short
         # sort M, w with M increasing in ft
         f.data_table.data = f.data_table.data[np.argsort(f.data_table.data[:, 0])]
@@ -553,7 +654,14 @@ class TheoryDiscrMWD(QTheory):
         self.Mw_bin.set_visible(True)
 
     def set_bar_plot(self, visible=True):
-        """Hide/Show the bar plot"""
+        """Hide/Show the bar plot representation of discretized bins.
+
+        Creates or removes a matplotlib bar chart showing the discretized MWD with
+        bin widths and heights representing molecular weight ranges and weight fractions.
+
+        Args:
+            visible (bool, optional): True to show the bar plot, False to hide. Defaults to True.
+        """
         try:
             self.bar_bins.remove()  # remove existing bars, if any
         except:
@@ -576,6 +684,15 @@ class TheoryDiscrMWD(QTheory):
             )
 
     def get_mwd(self):
+        """Get the discretized molecular weight distribution data.
+
+        Retrieves copies of the molecular weights and weight fractions from the
+        saved discretized distribution for use by other theories or applications.
+
+        Returns:
+            tuple: (m, phi) where m is a numpy array of molecular weights and phi is
+                a numpy array of corresponding weight fractions.
+        """
         m = np.copy(self.extra_data["saved_th"][:, 0])
         phi = np.copy(self.extra_data["saved_th"][:, 1])
         return m, phi

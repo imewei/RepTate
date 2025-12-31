@@ -124,10 +124,22 @@ class TheoryBobNLVE(QTheory):
             self.launch_param_dialog)
 
     def select_shear_flow(self):
+        """Select shear flow mode for NLVE calculations.
+
+        Sets the flow mode to shear and updates the toolbar button icon.
+        In shear mode, BoB calculates the shear stress response to an
+        applied shear rate.
+        """
         self.flow_mode = FlowMode.shear
         self.tbutflow.setDefaultAction(self.shear_flow_action)
 
     def select_extensional_flow(self):
+        """Select extensional flow mode for NLVE calculations.
+
+        Sets the flow mode to uniaxial extension and updates the toolbar
+        button icon. In extensional mode, BoB calculates the extensional
+        stress response to an applied extension rate.
+        """
         self.flow_mode = FlowMode.uext
         self.tbutflow.setDefaultAction(self.extensional_flow_action)
 
@@ -144,11 +156,21 @@ class TheoryBobNLVE(QTheory):
         self.d.selected_file.setText(os.path.basename(selected_file))
 
     def num_file_lines(self, fname):
-        """Return the number of lines in the file `fname`"""
+        """Return the number of lines in the file `fname`.
+
+        Counts the total number of lines in a text file by iterating through
+        all lines. Used to estimate memory requirements for BoB calculations.
+
+        Args:
+            fname (str): Path to the file to count lines in.
+
+        Returns:
+            int: The number of lines in the file plus one (to ensure adequate memory allocation).
+        """
         with open(fname) as f:
             i = 0
             for _, l in enumerate(f):
-                i += 1 
+                i += 1
             return i + 1
 
     def setup_dialog(self):
@@ -184,7 +206,18 @@ class TheoryBobNLVE(QTheory):
         QDesktopServices.openUrl(QUrl.fromLocalFile(bob_manual_pdf))
 
     def create_bob_input_file(self, nlines, inpf):
-        """Create a file containing the input BoB parameters from the form dialog"""
+        """Create a virtual input file containing BoB parameters from the form dialog.
+
+        Constructs a virtual input file (stored in memory) with parameters required
+        by the BoB library for NLVE calculations. The parameters are duplicated
+        (appended twice) because BoB NLVE performs two passes through the input.
+
+        Args:
+            nlines (int): Number of lines in the polymer configuration file,
+                used to estimate memory allocation requirements.
+            inpf (str): Dummy input filename (not used, kept for API compatibility
+                as virtual files are now used instead of disk files).
+        """
         # with open(inpf, 'w') as tmp:
         #     #1 memory
         #     npol = max(nlines, float(self.d.n_polymers.text()))
@@ -258,7 +291,17 @@ class TheoryBobNLVE(QTheory):
         self.success_dialog = True
 
     def is_ascii(self, s):
-        """Check if `s` contains non ASCII characters"""
+        """Check if `s` contains non ASCII characters.
+
+        Tests whether a string can be encoded as ASCII. BoB C++ library may
+        have issues with non-ASCII characters in file paths.
+
+        Args:
+            s (str): String to check for ASCII compatibility.
+
+        Returns:
+            bool: True if the string contains only ASCII characters, False otherwise.
+        """
         try:
             s.encode('ascii')
             return True
@@ -283,7 +326,15 @@ class TheoryBobNLVE(QTheory):
         self.bch.set_flag_stop_bob(ctypes.c_bool(True))
 
     def do_error(self, line=""):
-        """This theory does not calculate the error"""
+        """This theory does not calculate the error.
+
+        BoB NLVE theory does not implement error calculation because the
+        nonlinear predictions are typically compared qualitatively with
+        experimental data rather than fitted quantitatively.
+
+        Args:
+            line (str): Optional command line arguments (unused).
+        """
         pass
 
 
@@ -334,4 +385,14 @@ class TheoryBobNLVE(QTheory):
             # tt.data[:, 2] =
 
     def do_fit(self, line=''):
+        """Disable parameter fitting for this theory.
+
+        BoB NLVE theory does not support automated parameter fitting because
+        it requires a pre-generated polymer configuration file and nonlinear
+        fitting is computationally prohibitive. Parameter optimization should
+        be performed at the polymer generation stage (e.g., in the React application).
+
+        Args:
+            line (str): Optional command line arguments (unused).
+        """
         self.Qprint("Fitting not allowed in this theory")

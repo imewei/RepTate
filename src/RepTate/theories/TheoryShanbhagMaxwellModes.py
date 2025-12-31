@@ -264,6 +264,12 @@ class TheoryShanbhagMaxwellModesFrequency(QTheory):
         connection_id = self.disc_pred_action.triggered.connect(self.select_disc_pred)
 
     def select_cont_pred(self):
+        """Switch prediction mode to use continuous spectrum.
+
+        Updates the theory prediction mode to use the continuous relaxation spectrum
+        for calculating the predicted values of G'(w) and G"(w). Updates the theory
+        tables with predictions from the kernel matrix K and recalculates error and plot.
+        """
         self.prediction_mode = PredictionMode.cont
         self.tbutpredmode.setDefaultAction(self.cont_pred_action)
 
@@ -280,6 +286,12 @@ class TheoryShanbhagMaxwellModesFrequency(QTheory):
             self.do_plot("")
 
     def select_disc_pred(self):
+        """Switch prediction mode to use discrete spectrum.
+
+        Updates the theory prediction mode to use the discrete Maxwell modes
+        for calculating the predicted values of G'(w) and G"(w). Updates the theory
+        tables with predictions from the discrete modes GstM and recalculates error and plot.
+        """
         self.prediction_mode = PredictionMode.disc
         self.tbutpredmode.setDefaultAction(self.disc_pred_action)
 
@@ -335,7 +347,11 @@ class TheoryShanbhagMaxwellModesFrequency(QTheory):
         QMessageBox.information(self, "Success", 'Wrote spectrum "%s"' % fpath)
 
     def Qhide_theory_extras(self, state):
-        """Uncheck the modeaction button. Called when curent theory is changed"""
+        """Uncheck the modeaction button. Called when curent theory is changed.
+
+        Args:
+            state (bool): Visibility state for the mode action button.
+        """
         self.modesaction.setChecked(state)
 
     def modesaction_change(self, checked):
@@ -346,6 +362,11 @@ class TheoryShanbhagMaxwellModesFrequency(QTheory):
         # self.do_calculate("")
 
     def plateauaction_change(self, checked):
+        """Update the plateau parameter based on toolbar action state.
+
+        Args:
+            checked (bool): Whether the plateau checkbox is checked.
+        """
         self.set_param_value("plateau", checked)
 
     def handle_spinboxValueChanged(self, value):
@@ -404,26 +425,35 @@ class TheoryShanbhagMaxwellModesFrequency(QTheory):
         self.parent_dataset.parent_application.update_plot()
 
     def get_modes(self):
-        """Get the values of Maxwell Modes from this theory"""
+        """Get the values of Maxwell Modes from this theory.
+
+        Returns:
+            tuple: A tuple (tau, G, success) where:
+                - tau (np.ndarray): Relaxation times of the discrete modes.
+                - G (np.ndarray): Moduli (weights) of the discrete modes.
+                - success (bool): Always True, indicating modes are available.
+        """
         nmodes = len(self.sdisc)
         tau = self.sdisc
         G = self.Hdisc
         return tau, G, True
 
     def kernel_prestore(self, H, kernMat, *argv):
-        """
-        turbocharging kernel function evaluation by prestoring kernel matrix
-        Date    : 8/17/2018
-        Function: kernel_prestore(input) returns K*h, where h = exp(H)
+        """Evaluate kernel function K*h using prestored kernel matrix for speed.
 
-        Same as kernel, except prestoring hs, S, and W to improve speed 3x.
+        Computes the predicted complex modulus G* = [G'|G"] from the continuous
+        relaxation spectrum H using a prestored kernel matrix. This is 3x faster
+        than direct kernel evaluation.
 
-        outputs the 2n*1 dimensional vector K(H)(w) which is comparable to G* = [G'|G"]'
-        3/11/2019: returning Kh + G0
+        Args:
+            H (np.ndarray): Substituted continuous relaxation spectrum (ns,).
+            kernMat (np.ndarray): Prestored kernel matrix of shape (2n, ns) containing
+                [(ws^2/(1+ws^2)) | (ws/(1+ws^2))]'*hs where ws=w*s.
+            *argv: Optional G0 (plateau modulus) if present.
 
-        Input: H = substituted CRS,
-                kernMat = 2n*ns matrix [(ws^2/1+ws^2) | (ws/1+ws)]'*hs
-
+        Returns:
+            np.ndarray: Predicted complex modulus vector of shape (2n,) containing
+                [G'(w) | G"(w)]' that can be compared with experimental G*.
         """
         if len(argv) > 0:
             n = int(kernMat.shape[0] / 2)
@@ -435,10 +465,22 @@ class TheoryShanbhagMaxwellModesFrequency(QTheory):
         return np.dot(kernMat, np.exp(H)) + G0v
 
     def residualLM(self, H, lam, Gexp, kernMat):
+        """Compute residuals for Levenberg-Marquardt optimization.
+
+        Calculates the residual vector combining data misfit and regularization
+        (curvature) terms for the regularized least squares problem.
+
+        Args:
+            H (np.ndarray): Current continuous relaxation spectrum (ns,) or (ns+1,)
+                if plateau modulus G0 is included.
+            lam (float): Regularization parameter lambda controlling smoothness.
+            Gexp (np.ndarray): Experimental complex modulus data (2n,) = [G'|G"].
+            kernMat (np.ndarray): Prestored kernel matrix of shape (2n, ns).
+
+        Returns:
+            np.ndarray: Residual vector of shape (2n+nl,) where nl=ns-2, containing
+                normalized data residuals (first 2n) and smoothness residuals (last nl).
         """
-        %
-        % HELPER FUNCTION: Gets Residuals r
-        %"""
 
         n = int(kernMat.shape[0] / 2)
         ns = kernMat.shape[1]
@@ -533,9 +575,19 @@ class TheoryShanbhagMaxwellModesFrequency(QTheory):
         return DK
 
     def getKernMat(self, s, w):
-        """furnish kerMat() which helps faster kernel evaluation, given s, w
-        Generates a 2n*ns matrix [(ws^2/1+ws^2) | (ws/1+ws)]'*hs, which can be
-        multiplied with exp(H) to get predicted G*"""
+        """Construct kernel matrix for fast evaluation of predicted G*(w).
+
+        Generates a 2n×ns matrix that can be multiplied with exp(H) to get
+        predicted complex modulus G*. Uses trapezoidal rule weights for integration.
+
+        Args:
+            s (np.ndarray): Relaxation time grid (ns,).
+            w (np.ndarray): Angular frequency vector (n,).
+
+        Returns:
+            np.ndarray: Kernel matrix of shape (2n, ns) containing
+                [(ws^2/(1+ws^2)) | (ws/(1+ws^2))]'*hs where hs are integration weights.
+        """
 
         ns = len(s)
         hsv = np.zeros(ns)
@@ -551,17 +603,23 @@ class TheoryShanbhagMaxwellModesFrequency(QTheory):
         return np.vstack((ws2 / (1 + ws2), ws / (1 + ws2))) * hsv
 
     def getH(self, lam, Gexp, H, kernMat, G0=0):
-        """
+        """Minimize regularized objective to find optimal H for given lambda.
+
+        Solves the regularized least squares problem:
         minimize_H  V(lambda) := ||Gexp - kernel(H)||^2 +  lambda * ||L H||^2
+        where L is the second derivative operator enforcing smoothness.
 
-        Input  : lambda  = regularization parameter ,
-                Gexp    = experimental data,
-                H       = guessed H,
-                kernMat = matrix for faster kernel evaluation
-                G0      = optional
+        Args:
+            lam (float): Regularization parameter lambda controlling smoothness.
+            Gexp (np.ndarray): Experimental complex modulus data (2n,).
+            H (np.ndarray): Initial guess for continuous relaxation spectrum (ns,).
+            kernMat (np.ndarray): Prestored kernel matrix of shape (2n, ns).
+            G0 (float): Optional plateau modulus (default 0).
 
-        Output : H_lam, [G0]
-                Default uses Trust-Region Method with Jacobian supplied by jacobianLM
+        Returns:
+            np.ndarray or tuple: If G0 > 0, returns (H_lam, G0_opt) tuple.
+                Otherwise returns H_lam array. Uses trust-region method with
+                Jacobian from jacobianLM.
         """
         # send Hplus = [H, G0], on return unpack H and G0
         if G0 > 0:
@@ -579,16 +637,20 @@ class TheoryShanbhagMaxwellModesFrequency(QTheory):
             return res_lsq.x
 
     def InitializeH(self, Gexp, s, kernMat, G0=0):
-        """
-        Function: InitializeH(input)
+        """Initialize continuous relaxation spectrum H with a smooth guess.
 
-        Input:  Gexp    = 2n\*1 vector [G';G"],
-                s       = relaxation modes,
-                kernMat = matrix for faster kernel evaluation
-                G0      = optional; if plateau is nonzero
+        Creates an initial guess for H using a sinusoidal perturbation and
+        large regularization to get a smooth starting point for optimization.
 
-        Output: H = guessed H
-                G0 = optional guess if *argv is nonempty
+        Args:
+            Gexp (np.ndarray): Experimental complex modulus data (2n,) = [G'|G"].
+            s (np.ndarray): Relaxation time grid (ns,).
+            kernMat (np.ndarray): Prestored kernel matrix of shape (2n, ns).
+            G0 (float): Optional initial guess for plateau modulus (default 0).
+
+        Returns:
+            np.ndarray or tuple: If G0 > 0, returns (H_init, G0_init) tuple.
+                Otherwise returns H_init array containing the initial spectrum guess.
         """
 
         #
@@ -622,8 +684,19 @@ class TheoryShanbhagMaxwellModesFrequency(QTheory):
         return np.dot(L.T, L)
 
     def getBmatrix(self, H, kernMat, Gexp, *argv):
-        """get the Bmatrix required for error analysis; helper for lcurve()
-        not explicitly accounting for G0 in Jr because otherwise I get underflow problems
+        """Compute B matrix for error analysis in L-curve calculation.
+
+        Constructs the B matrix needed for Bayesian error estimation using
+        B = J^T*J + diag(r^T*J) where J is the Jacobian and r is the residual.
+
+        Args:
+            H (np.ndarray): Current continuous relaxation spectrum (ns,).
+            kernMat (np.ndarray): Prestored kernel matrix.
+            Gexp (np.ndarray): Experimental data vector.
+            *argv: Optional G0 plateau modulus.
+
+        Returns:
+            np.ndarray: B matrix of shape (ns, ns) for error covariance estimation.
         """
         n = int(len(Gexp) / 2)
         ns = len(H)
@@ -646,6 +719,20 @@ class TheoryShanbhagMaxwellModesFrequency(QTheory):
         return B
 
     def oldLamC(self, lam, rho, eta):
+        """Determine optimal regularization parameter using L-curve heuristic.
+
+        Finds the corner (elbow) of the L-curve by minimizing a combined error
+        metric that balances data misfit (rho) and solution roughness (eta).
+        Applies rho_cutoff threshold for noisy data.
+
+        Args:
+            lam (np.ndarray): Array of lambda values explored.
+            rho (np.ndarray): Data misfit ||Gexp - kernel(H)|| for each lambda.
+            eta (np.ndarray): Solution roughness ||L*H|| for each lambda.
+
+        Returns:
+            float: Optimal regularization parameter lamC at the L-curve corner.
+        """
         #
         # 8/1/2018: Making newer strategy more accurate and robust: dividing by minimum rho/eta
         # which is not as sensitive to lam_min, lam_max. This makes lamC robust to range of lam explored
@@ -691,21 +778,26 @@ class TheoryShanbhagMaxwellModesFrequency(QTheory):
         return lamC
 
     def lcurve(self, Gexp, Hgs, kernMat, *argv):
-        """
-        Function: lcurve(input)
+        """Construct L-curve and determine optimal regularization parameter.
 
-        Input: Gexp    = 2n*1 vector [Gt],
-                Hgs     = guessed H,
-                kernMat = matrix for faster kernel evaluation
-                G0      = optionally
+        Explores a range of lambda values to build the L-curve (rho vs eta plot)
+        and determines the optimal lambda using Bayesian evidence maximization.
+        Starts from large lambda to small for computational efficiency.
 
+        Args:
+            Gexp (np.ndarray): Experimental complex modulus data (2n,) = [G'|G"].
+            Hgs (np.ndarray): Initial guess for continuous spectrum H (ns,).
+            kernMat (np.ndarray): Prestored kernel matrix of shape (2n, ns).
+            *argv: Optional G0 plateau modulus.
 
-        Output: lamC and 3 vectors of size npoints*1 contains a range of lambda, rho
-                and eta. "Elbow"  = lamC is estimated using a *NEW* heuristic AND by Hansen method
-
-
-            March 2019: starting from large lambda to small cuts calculation time by a lot
-                    also gives an error estimate
+        Returns:
+            tuple: (lamC, lam, rho, eta, logP, Hlambda) where:
+                - lamC (float): Optimal lambda at L-curve corner.
+                - lam (np.ndarray): Array of lambda values explored.
+                - rho (np.ndarray): Data misfit for each lambda.
+                - eta (np.ndarray): Solution roughness for each lambda.
+                - logP (np.ndarray): Log posterior probability for each lambda.
+                - Hlambda (np.ndarray): Spectrum solutions for each lambda (ns, npoints).
         """
 
         plateau = self.parameters["plateau"].value
@@ -794,21 +886,25 @@ class TheoryShanbhagMaxwellModesFrequency(QTheory):
         return lamM, lam, rho, eta, logP, Hlambda
 
     def MaxwellModes(self, z, w, Gexp, isPlateau):
-        """
+        """Extract discrete Maxwell modes from continuous spectrum using NNLS.
 
-        Function: MaxwellModes(input)
+        Solves the non-negative linear least squares problem to obtain the
+        discrete relaxation spectrum (DRS) from selected relaxation times.
+        Prunes modes with negligible weights or outside the frequency window.
 
-        Solves the linear least squares problem to obtain the DRS
+        Args:
+            z (np.ndarray): Log-relaxation times log(tau) distributed according
+                to the spectrum density.
+            w (np.ndarray): Angular frequency vector (n,).
+            Gexp (np.ndarray): Experimental complex modulus (2n,) = [G'|G"].
+            isPlateau (bool): True if plateau modulus G0 should be included.
 
-        Input: z = points distributed according to the density,
-                t    = n*1 vector contains times,
-                Gexp = 2n*1 vector contains Gp and Gpp
-                isPlateau = True if G0 \neq 0
-
-        Output: g, tau = spectrum  (array)
-                error = relative error between the input data and the G(t) inferred from the DRS
-                condKp = condition number
-
+        Returns:
+            tuple: (g, tau, error, condKp) where:
+                - g (np.ndarray): Moduli (weights) of discrete modes.
+                - tau (np.ndarray): Relaxation times of discrete modes.
+                - error (float): Relative error ||G_model/G_exp - 1||^2.
+                - condKp (float): Condition number of the normalized kernel matrix.
         """
 
         N = len(z)
@@ -839,11 +935,22 @@ class TheoryShanbhagMaxwellModesFrequency(QTheory):
         return g, tau, error, condKp
 
     def nnLLS(self, w, tau, Gexp, isPlateau):
-        """
-        #
-        # Helper subfunction which does the actual LLS problem
-        # helps MaxwellModes
-        #
+        """Solve non-negative linear least squares for Maxwell mode weights.
+
+        Performs NNLS optimization to find mode weights g_i that minimize
+        ||G_model/G_exp - 1||^2 subject to g_i >= 0.
+
+        Args:
+            w (np.ndarray): Angular frequency vector (n,).
+            tau (np.ndarray): Relaxation time vector for modes (nmodes,).
+            Gexp (np.ndarray): Experimental complex modulus (2n,) = [G'|G"].
+            isPlateau (bool): True to include plateau modulus G0 as final weight.
+
+        Returns:
+            tuple: (g, error, condKp) where:
+                - g (np.ndarray): Non-negative mode weights, length nmodes or nmodes+1.
+                - error (float): Relative squared error sum((G_model/G_exp - 1)^2).
+                - condKp (float): Condition number of normalized kernel matrix.
         """
         n = int(len(Gexp) / 2)
         ntau = len(tau)
@@ -869,20 +976,22 @@ class TheoryShanbhagMaxwellModesFrequency(QTheory):
         return g, error, condKp
 
     def GetWeights(self, H, w, s, wb):
-        """
-        %
-        % Function: GetWeights(input)
-        %
-        % Finds the weight of "each" mode by taking a weighted average of its contribution
-        % to Gp and Gpp, mixed with an even distribution given by `wb`
-        %
-        % Input: H = CRS (ns * 1)
-        %        w = n*1 vector contains times
-        %        s = relaxation modes (ns * 1)
-        %       wb = weightBaseDist
-        %
-        % Output: wt = weight of each mode
-        %
+        """Compute mode weights for adaptive grid placement in discrete spectrum.
+
+        Calculates importance weights for each relaxation time based on its
+        contribution to G' and G", blended with uniform distribution via wb.
+        Used to optimally place discrete modes where the spectrum is most active.
+
+        Args:
+            H (np.ndarray): Continuous relaxation spectrum (ns,).
+            w (np.ndarray): Angular frequency vector (n,).
+            s (np.ndarray): Relaxation time grid (ns,).
+            wb (float): Base weight distribution parameter (0 to 1). wb=0 gives
+                fully adaptive placement, wb=1 gives uniform placement.
+
+        Returns:
+            np.ndarray: Normalized weight distribution (ns,) indicating importance
+                of each relaxation time for mode placement.
         """
 
         ns = len(s)
@@ -915,26 +1024,26 @@ class TheoryShanbhagMaxwellModesFrequency(QTheory):
         return wt
 
     def GridDensity(self, x, px, N):
-        """#
-        #  PROGRAM: GridDensity(input)
-        #
-        #	Takes in a PDF or density function, and spits out a bunch of points in
-        #       accordance with the PDF
-        #
-        #  Input:
-        #       x  = vector of points. It need *not* be equispaced,
-        #       px = vector of same size as x: probability distribution or
-        #            density function. It need not be normalized but has to be positive.
-        #  	    N  = Number of points >= 3. The end points of "x" are included
-        #  	     necessarily,
-        #
-        #  Output:
-        #       z  = Points distributed according to the density
-        #       hz = width of the "intervals" - useful to apportion domain to points
-        #            if you are doing quadrature with the results, for example.
-        #
-        #  (c) Sachin Shanbhag, November 11, 2015
-        #"""
+        """Generate N points distributed according to a probability density function.
+
+        Uses inverse transform sampling to place points where the density is highest.
+        Points are positioned at center of mass of equal-probability intervals,
+        not at uniform spacing. Endpoints are always included.
+
+        Args:
+            x (np.ndarray): Domain points (need not be equally spaced).
+            px (np.ndarray): Probability density values at x (need not be normalized,
+                but must be positive).
+            N (int): Number of output points (>= 3).
+
+        Returns:
+            tuple: (z, h) where:
+                - z (np.ndarray): N points distributed according to density px.
+                - h (np.ndarray): Interval widths for quadrature (N,).
+
+        Note:
+            (c) Sachin Shanbhag, November 11, 2015
+        """
 
         npts = 100
         # can potentially change
@@ -973,9 +1082,21 @@ class TheoryShanbhagMaxwellModesFrequency(QTheory):
         return z, h
 
     def mergeModes_magic(self, g, tau, imode):
-        """merge modes imode and imode+1 into a single mode
-        return gp and taup corresponding to this new mode
-        used only when magic = True"""
+        """Merge two adjacent Maxwell modes into a single equivalent mode.
+
+        Combines modes imode and imode+1 by minimizing the difference between
+        the original and merged predictions of G'(w) and G"(w).
+
+        Args:
+            g (np.ndarray): Current mode weights.
+            tau (np.ndarray): Current relaxation times.
+            imode (int): Index of first mode to merge (merges with imode+1).
+
+        Returns:
+            tuple: (newg, newtau) where:
+                - newg (np.ndarray): Updated weights with merged mode.
+                - newtau (np.ndarray): Updated times with merged mode.
+        """
 
         iniGuess = [g[imode] + g[imode + 1], 0.5 * (tau[imode] + tau[imode + 1])]
         res = minimize(self.costFcn_magic, iniGuess, args=(g, tau, imode))
@@ -1027,9 +1148,23 @@ class TheoryShanbhagMaxwellModesFrequency(QTheory):
         )
 
     def FineTuneSolution(self, tau, w, Gexp, isPlateau):
-        """Given a spacing of modes tau, tries to do NLLS to fine tune it further
-        If it fails, then it returns the old tau back
-        Uses helper function: res_wG which computes residuals
+        """Optimize relaxation times using nonlinear least squares.
+
+        Fine-tunes the discrete mode positions (tau values) using NLLS while
+        keeping mode weights optimized via NNLS. Falls back to original tau if
+        optimization fails or worsens the fit.
+
+        Args:
+            tau (np.ndarray): Initial relaxation times.
+            w (np.ndarray): Angular frequency vector.
+            Gexp (np.ndarray): Experimental complex modulus data.
+            isPlateau (bool): Whether plateau modulus is included.
+
+        Returns:
+            tuple: (success, g, tau) where:
+                - success (bool): True if fine-tuning improved the solution.
+                - g (np.ndarray): Optimized mode weights.
+                - tau (np.ndarray): Optimized (or original) relaxation times.
         """
 
         success = False
@@ -1334,6 +1469,15 @@ class TheoryShanbhagMaxwellModesFrequency(QTheory):
             self.Qprint("<b>Fit from continuous spectrum</b>")
 
     def do_fit(self, line=""):
+        """Disable parameter fitting for this theory.
+
+        This theory uses regularization and discrete mode extraction rather than
+        traditional parameter fitting. The lambda parameter and number of modes
+        are determined automatically via L-curve and AIC criteria.
+
+        Args:
+            line (str): Command line arguments (unused).
+        """
         self.Qprint("Fitting not allowed in this theory")
 
     def do_error(self, line):
@@ -1625,6 +1769,12 @@ class TheoryShanbhagMaxwellModesTime(QTheory):
         connection_id = self.disc_pred_action.triggered.connect(self.select_disc_pred)
 
     def select_cont_pred(self):
+        """Switch prediction mode to use continuous spectrum (Time domain).
+
+        Updates the theory prediction mode to use the continuous relaxation spectrum
+        for calculating the predicted values of G(t). Updates the theory
+        tables with predictions from the kernel matrix K and recalculates error and plot.
+        """
         self.prediction_mode = PredictionMode.cont
         self.tbutpredmode.setDefaultAction(self.cont_pred_action)
 
@@ -1643,6 +1793,12 @@ class TheoryShanbhagMaxwellModesTime(QTheory):
             self.do_plot("")
 
     def select_disc_pred(self):
+        """Switch prediction mode to use discrete spectrum (Time domain).
+
+        Updates the theory prediction mode to use the discrete Maxwell modes
+        for calculating the predicted values of G(t). Updates the theory
+        tables with predictions from the discrete modes GtM and recalculates error and plot.
+        """
         self.prediction_mode = PredictionMode.disc
         self.tbutpredmode.setDefaultAction(self.disc_pred_action)
 
@@ -1661,6 +1817,11 @@ class TheoryShanbhagMaxwellModesTime(QTheory):
             self.do_plot("")
 
     def plateauaction_change(self, checked):
+        """Update the plateau parameter based on toolbar action state (Time).
+
+        Args:
+            checked (bool): Whether the plateau checkbox is checked.
+        """
         self.set_param_value("plateau", checked)
 
     def save_spectrum(self):
@@ -1704,7 +1865,11 @@ class TheoryShanbhagMaxwellModesTime(QTheory):
         QMessageBox.information(self, "Success", 'Wrote spectrum "%s"' % fpath)
 
     def Qhide_theory_extras(self, state):
-        """Uncheck the modeaction button. Called when curent theory is changed"""
+        """Uncheck the modeaction button. Called when curent theory is changed (Time).
+
+        Args:
+            state (bool): Visibility state for the mode action button.
+        """
         self.modesaction.setChecked(state)
 
     def modesaction_change(self, checked):
@@ -1760,7 +1925,14 @@ class TheoryShanbhagMaxwellModesTime(QTheory):
         self.parent_dataset.parent_application.update_plot()
 
     def get_modes(self):
-        """Get the values of Maxwell Modes from this theory"""
+        """Get the values of Maxwell Modes from this theory (Time domain).
+
+        Returns:
+            tuple: A tuple (tau, G, success) where:
+                - tau (np.ndarray): Relaxation times of the discrete modes.
+                - G (np.ndarray): Moduli (weights) of the discrete modes.
+                - success (bool): Always True, indicating modes are available.
+        """
         nmodes = len(self.sdisc)
         tau = self.sdisc
         G = self.Hdisc
@@ -1874,6 +2046,20 @@ class TheoryShanbhagMaxwellModesTime(QTheory):
         return B
 
     def oldLamC(self, lam, rho, eta):
+        """Determine optimal regularization parameter using L-curve heuristic (Time).
+
+        Finds the corner (elbow) of the L-curve by minimizing a combined error
+        metric that balances data misfit (rho) and solution roughness (eta).
+        Applies rho_cutoff threshold for noisy data.
+
+        Args:
+            lam (np.ndarray): Array of lambda values explored.
+            rho (np.ndarray): Data misfit ||Gexp - kernel(H)|| for each lambda.
+            eta (np.ndarray): Solution roughness ||L*H|| for each lambda.
+
+        Returns:
+            float: Optimal regularization parameter lamC at the L-curve corner.
+        """
         #
         # 8/1/2018: Making newer strategy more accurate and robust: dividing by minimum rho/eta
         # which is not as sensitive to lam_min, lam_max. This makes lamC robust to range of lam explored
@@ -2653,6 +2839,15 @@ class TheoryShanbhagMaxwellModesTime(QTheory):
             gamma = 1
 
     def do_fit(self, line=""):
+        """Disable parameter fitting for this theory (Time domain).
+
+        This theory uses regularization and discrete mode extraction rather than
+        traditional parameter fitting. The lambda parameter and number of modes
+        are determined automatically via L-curve and AIC criteria.
+
+        Args:
+            line (str): Command line arguments (unused).
+        """
         self.Qprint("Fitting not allowed in this theory")
 
     def do_error(self, line):

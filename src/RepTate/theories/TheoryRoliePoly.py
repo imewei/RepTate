@@ -333,6 +333,15 @@ class TheoryRoliePoly(QTheory):
         )
 
     def handle_with_fene_button(self, checked):
+        """Handle toggle of finite extensibility mode.
+
+        Switches between infinite extensibility and FENE (Finitely Extensible Nonlinear Elastic)
+        mode. When enabled, displays and enables the lmax parameter for maximum extensibility.
+        When disabled, hides the lmax parameter and uses infinite extensibility.
+
+        Args:
+            checked (bool): True if FENE mode is enabled, False for infinite extensibility.
+        """
         if checked:
             self.with_fene = FeneMode.with_fene
             self.with_fene_button.setChecked(True)
@@ -353,19 +362,44 @@ class TheoryRoliePoly(QTheory):
         self.parent_dataset.handle_actionCalculate_Theory()
 
     def handle_spinboxValueChanged(self, value):
+        """Handle changes to the number of stretching modes spinbox.
+
+        Updates the nstretch parameter when the spinbox value changes. The number of
+        stretching modes cannot exceed the total number of modes.
+
+        Args:
+            value (int): New number of stretching modes requested by the user.
+        """
         nmodes = self.parameters["nmodes"].value
         self.set_param_value("nstretch", min(nmodes, value))
         if self.autocalculate:
             self.parent_dataset.handle_actionCalculate_Theory()
 
     def Qhide_theory_extras(self, show):
-        """Uncheck the LVE button. Called when curent theory is changed"""
+        """Control visibility of linear viscoelastic envelope when theory is changed.
+
+        Called when the current theory tab is changed. Shows or hides the LVE envelope
+        series based on the show parameter and the state of the linearenvelope checkbox.
+
+        Args:
+            show (bool): True to make LVE envelope visible (if checkbox is checked),
+                False to hide it.
+        """
         if show:
             self.LVEenvelopeseries.set_visible(self.linearenvelope.isChecked())
         else:
             self.LVEenvelopeseries.set_visible(False)
 
     def show_linear_envelope(self, state):
+        """Toggle visibility of the linear viscoelastic envelope plot.
+
+        Triggered when the user clicks the "Show Linear Envelope" toolbar button.
+        The LVE envelope shows the linear viscoelastic prediction for comparison
+        with the nonlinear theory results.
+
+        Args:
+            state (bool): True to show the LVE envelope, False to hide it.
+        """
         self.extra_graphic_visible(state)
         # self.LVEenvelopeseries.set_visible(self.linearenvelope.isChecked())
         # self.plot_theory_stuff()
@@ -404,17 +438,38 @@ class TheoryRoliePoly(QTheory):
             self.LVEenvelopeseries.set_data(x[:, 0], y[:, 0])
 
     def select_shear_flow(self):
+        """Select shear flow geometry for theory calculations.
+
+        Sets the flow mode to shear and updates the toolbar button icon.
+        This affects which differential equations are used for stress calculation.
+        """
         self.flow_mode = FlowMode.shear
         self.tbutflow.setDefaultAction(self.shear_flow_action)
 
     def select_extensional_flow(self):
+        """Select uniaxial extensional flow geometry for theory calculations.
+
+        Sets the flow mode to uniaxial extension and updates the toolbar button icon.
+        This affects which differential equations are used for stress calculation.
+        """
         self.flow_mode = FlowMode.uext
         self.tbutflow.setDefaultAction(self.extensional_flow_action)
 
     def get_modes_reptate(self):
+        """Get Maxwell modes from another theory in RepTate.
+
+        Opens a dialog to copy Maxwell modes (relaxation times and moduli) from
+        another theory or analysis that has modes available in the current application.
+        """
         self.Qcopy_modes()
 
     def edit_modes_window(self):
+        """Open interactive dialog to manually edit Maxwell modes.
+
+        Displays a table editor where users can modify relaxation times and moduli
+        for each mode. Users can add or remove modes, and changes are validated
+        before being applied to the theory parameters.
+        """
         times, G, success = self.get_modes()
         if not success:
             self.logger.warning("Could not get modes successfully")
@@ -443,7 +498,15 @@ class TheoryRoliePoly(QTheory):
                 self.handle_actionCalculate_Theory()
 
     def set_extra_data(self, extra_data):
-        """Set extra data when loading project"""
+        """Set extra data when loading project.
+
+        Restores theory-specific state that is not stored in regular parameters,
+        such as the FENE mode and number of stretching modes.
+
+        Args:
+            extra_data (dict): Dictionary containing extra state variables including
+                'with_fene' key indicating whether FENE mode was enabled.
+        """
         self.handle_with_fene_button(extra_data["with_fene"])
         self.spinbox.setValue(self.parameters["nstretch"].value)
 
@@ -470,17 +533,39 @@ class TheoryRoliePoly(QTheory):
         self.LVEenvelopeseries.remove()
 
     def show_theory_extras(self, show=False):
-        """Called when the active theory is changed"""
+        """Called when the active theory is changed.
+
+        Controls visibility of theory-specific graphics (like the LVE envelope)
+        when switching between different theories in the application.
+
+        Args:
+            show (bool): True to show theory extras, False to hide them.
+                Defaults to False.
+        """
         self.Qhide_theory_extras(show)
         # self.extra_graphic_visible(self.linearenvelope.isChecked())
 
     def extra_graphic_visible(self, state):
-        """Change visibility of theory helpers"""
+        """Change visibility of theory helper graphics.
+
+        Controls the visibility of the linear viscoelastic envelope plot and
+        refreshes the application plot display.
+
+        Args:
+            state (bool): True to make the LVE envelope visible, False to hide it.
+        """
         self.LVEenvelopeseries.set_visible(state)
         self.parent_dataset.parent_application.update_plot()
 
     def get_modes(self):
-        """Get the values of Maxwell Modes from this theory"""
+        """Get the values of Maxwell Modes from this theory.
+
+        Returns:
+            tuple: A tuple containing:
+                - tau (np.ndarray): Array of relaxation times (tauD) for each mode.
+                - G (np.ndarray): Array of moduli for each mode.
+                - success (bool): Always True, indicating successful retrieval.
+        """
         nmodes = self.parameters["nmodes"].value
         tau = np.zeros(nmodes)
         G = np.zeros(nmodes)
@@ -490,7 +575,18 @@ class TheoryRoliePoly(QTheory):
         return tau, G, True
 
     def set_modes(self, tau, G):
-        """Set the values of Maxwell Modes from another theory"""
+        """Set the values of Maxwell Modes from another theory.
+
+        Updates the theory parameters with new relaxation times and moduli,
+        automatically adjusting the number of modes to match the input arrays.
+
+        Args:
+            tau (np.ndarray): Array of relaxation times to set for each mode.
+            G (np.ndarray): Array of moduli to set for each mode.
+
+        Returns:
+            bool: Always True, indicating successful mode assignment.
+        """
         nmodes = len(tau)
         self.set_param_value("nmodes", nmodes)
         self.set_param_value("nstretch", nmodes)
@@ -501,8 +597,25 @@ class TheoryRoliePoly(QTheory):
         return True
 
     def sigmadot_shear(self, sigma, t, p):
-        """Rolie-Poly differential equation under *shear* flow
-        with stretching and finite extensibility if selected"""
+        """Rolie-Poly differential equation under shear flow with stretching.
+
+        Computes the time derivative of the stress tensor components for shear flow,
+        including chain stretching dynamics and optional FENE finite extensibility.
+
+        Args:
+            sigma (list): List of stress tensor components [sxx, syy, sxy].
+            t (float): Current time.
+            p (list): Parameters [lmax, tauD, tauR, beta, delta, gammadot] where
+                lmax is maximum extensibility, tauD is terminal relaxation time,
+                tauR is Rouse time, beta is CCR coefficient, delta is CCR exponent,
+                and gammadot is shear rate.
+
+        Returns:
+            list: Time derivatives [dsxx/dt, dsyy/dt, dsxy/dt] of stress components.
+
+        Raises:
+            EndComputationRequested: If stop_theory_flag is set during computation.
+        """
         if self.stop_theory_flag:
             raise EndComputationRequested
         sxx, syy, sxy = sigma
@@ -551,8 +664,26 @@ class TheoryRoliePoly(QTheory):
         ]
 
     def sigmadot_uext(self, sigma, t, p):
-        """Rolie-Poly differential equation under *uniaxial elongational* flow
-        with stretching and finite extensibility if selecter"""
+        """Rolie-Poly differential equation under uniaxial elongational flow with stretching.
+
+        Computes the time derivative of the stress tensor components for uniaxial
+        extensional flow, including chain stretching dynamics and optional FENE
+        finite extensibility.
+
+        Args:
+            sigma (list): List of stress tensor components [sxx, syy].
+            t (float): Current time.
+            p (list): Parameters [lmax, tauD, tauR, beta, delta, epsilon_dot] where
+                lmax is maximum extensibility, tauD is terminal relaxation time,
+                tauR is Rouse time, beta is CCR coefficient, delta is CCR exponent,
+                and epsilon_dot is elongation rate.
+
+        Returns:
+            list: Time derivatives [dsxx/dt, dsyy/dt] of stress components.
+
+        Raises:
+            EndComputationRequested: If stop_theory_flag is set during computation.
+        """
         if self.stop_theory_flag:
             raise EndComputationRequested
         sxx, syy = sigma
@@ -648,13 +779,34 @@ class TheoryRoliePoly(QTheory):
         ]
 
     def calculate_fene(self, l_square, lmax):
-        """calculate finite extensibility function value"""
+        """Calculate finite extensibility function value.
+
+        Computes the FENE (Finitely Extensible Nonlinear Elastic) function that
+        modulates chain dynamics based on the current stretch relative to maximum
+        extensibility.
+
+        Args:
+            l_square (float): Square of current chain stretch (lambda^2).
+            lmax (float): Maximum chain extensibility parameter.
+
+        Returns:
+            float: FENE function value that multiplies the chain retraction term.
+        """
         ilm2 = 1.0 / (lmax * lmax)  # 1/lambda_max^2
         l2_lm2 = l_square * ilm2  # (lambda/lambda_max)^2
         return (3.0 - l2_lm2) / (1.0 - l2_lm2) * (1.0 - ilm2) / (3.0 - ilm2)
 
     def RoliePoly(self, f=None):
-        """Calculate the theory"""
+        """Calculate the Rolie-Poly theory for a data file.
+
+        Main calculation routine that solves the Rolie-Poly differential equations
+        for all modes and flow conditions. Handles both shear and extensional flows,
+        with or without chain stretching and finite extensibility.
+
+        Args:
+            f (DataFile): Data file object containing experimental flow data and
+                parameters including flow rate (gdot).
+        """
         ft = f.data_table
         tt = self.tables[f.file_name_short]
         tt.num_columns = ft.num_columns
@@ -790,7 +942,21 @@ class TheoryRoliePoly(QTheory):
                 tt.data[:, 2] *= fene_arr
 
     def set_param_value(self, name, value):
-        """Set the value of a theory parameter"""
+        """Set the value of a theory parameter.
+
+        Handles special logic for the nmodes parameter, which requires creating
+        or deleting mode-specific parameters (G, tauD, tauR) when the number
+        of modes changes.
+
+        Args:
+            name (str): Name of the parameter to set.
+            value: New value for the parameter.
+
+        Returns:
+            tuple: A tuple containing:
+                - message (str): Error message if unsuccessful, empty string otherwise.
+                - success (bool): True if parameter was set successfully, False otherwise.
+        """
         if name == "nmodes":
             oldn = self.parameters["nmodes"].value
             self.spinbox.setMaximum(int(value))

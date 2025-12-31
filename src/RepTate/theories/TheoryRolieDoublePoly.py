@@ -377,6 +377,14 @@ class TheoryRolieDoublePoly(QTheory):
         )
 
     def handle_with_gcorr_button(self, checked):
+        """Handle toggling of modulus correction button.
+
+        Enables or disables the Likhtman-McLeish CLF correction function g(Z) for the
+        plateau modulus. Requires effective entanglement numbers (Zeff) from MWD data.
+
+        Args:
+            checked (bool): True if button is checked (correction enabled), False otherwise.
+        """
         if checked:
             if len(self.Zeff) > 0:
                 # if Zeff contains something
@@ -394,6 +402,15 @@ class TheoryRolieDoublePoly(QTheory):
         )
 
     def handle_with_fene_button(self, checked):
+        """Handle toggling of finite extensibility button.
+
+        Enables or disables the FENE (Finitely Extensible Nonlinear Elastic) correction
+        for polymer chain stretch. When enabled, the lmax parameter becomes visible and
+        optimizable.
+
+        Args:
+            checked (bool): True if button is checked (FENE enabled), False otherwise.
+        """
         if checked:
             self.with_fene = FeneMode.with_fene
             self.with_fene_button.setChecked(True)
@@ -416,7 +433,12 @@ class TheoryRolieDoublePoly(QTheory):
         )
 
     def Qhide_theory_extras(self, show):
-        """Uncheck the LVE button. Called when curent theory is changed"""
+        """Uncheck the LVE button. Called when curent theory is changed.
+
+        Args:
+            show (bool): If True, show the LVE envelope according to button state.
+                        If False, hide the LVE envelope.
+        """
         if show:
             self.LVEenvelopeseries.set_visible(self.linearenvelope.isChecked())
         else:
@@ -427,6 +449,14 @@ class TheoryRolieDoublePoly(QTheory):
         self.parent_dataset.actionHorizontal_Limits.setDisabled(show)
 
     def show_linear_envelope(self, state):
+        """Toggle visibility of the linear viscoelastic envelope.
+
+        Plots the small-strain (linear) prediction of the theory as a dashed green line
+        to compare with nonlinear flow predictions.
+
+        Args:
+            state (bool): True to show the LVE envelope, False to hide it.
+        """
         self.plot_theory_stuff()
         self.extra_graphic_visible(state)
         # self.LVEenvelopeseries.set_visible(self.linearenvelope.isChecked())
@@ -434,14 +464,33 @@ class TheoryRolieDoublePoly(QTheory):
         # self.parent_dataset.parent_application.update_plot()
 
     def select_shear_flow(self):
+        """Switch flow mode to shear.
+
+        Sets the theory to calculate shear flow predictions using the shear kinematics
+        and stress component (sigma_xy).
+        """
         self.flow_mode = FlowMode.shear
         self.tbutflow.setDefaultAction(self.shear_flow_action)
 
     def select_extensional_flow(self):
+        """Switch flow mode to uniaxial extension.
+
+        Sets the theory to calculate uniaxial extensional flow predictions using the
+        extensional kinematics and stress difference (sigma_xx - sigma_yy).
+        """
         self.flow_mode = FlowMode.uext
         self.tbutflow.setDefaultAction(self.extensional_flow_action)
 
     def get_modes_reptate(self):
+        """Retrieve relaxation modes from a Discretize MWD theory instance.
+
+        Searches all open applications, datasets, and theories for a "Discretize MWD" theory.
+        If found, prompts user to select one and imports the molecular weight distribution
+        to calculate relaxation times and volume fractions for each mode.
+
+        Requires the entanglement molecular weight (Me) and entanglement time (tau_e) to
+        convert MWD to relaxation spectrum.
+        """
         apmng = self.parent_dataset.parent_application.parent_manager
         get_dict = {}
         for app in apmng.applications.values():
@@ -480,6 +529,14 @@ class TheoryRolieDoublePoly(QTheory):
         # self.parent_dataset.handle_actionCalculate_Theory()
 
     def edit_modes_window(self):
+        """Open dialog to manually edit mode parameters.
+
+        Displays an interactive table allowing direct editing of volume fractions (phi),
+        terminal relaxation times (tauD), and Rouse times (tauR) for each mode. The number
+        of modes can also be changed within the MAX_MODES limit.
+
+        Updates theory parameters and recalculates upon dialog acceptance.
+        """
         nmodes = self.parameters["nmodes"].value
         phi = np.zeros(nmodes)
         taud = np.zeros(nmodes)
@@ -519,6 +576,14 @@ class TheoryRolieDoublePoly(QTheory):
                 self.handle_actionCalculate_Theory()
 
     def edit_mwd_modes(self):
+        """Open dialog to manually edit molecular weight distribution.
+
+        Displays an interactive table for editing molecular weights and volume fractions
+        that define the MWD. Also allows editing Me and tau_e parameters. Upon acceptance,
+        converts the MWD to relaxation modes using dilution theory.
+
+        Allows up to 200 molecular weight components.
+        """
         d = EditMWDDialog(self, self.MWD_m, self.MWD_phi, 200)
         if d.exec_():
             nmodes = d.table.rowCount()
@@ -598,7 +663,16 @@ class TheoryRolieDoublePoly(QTheory):
                 data_table_tmp.series[nx][i].remove()
 
     def set_extra_data(self, extra_data):
-        """Set extra data when loading project"""
+        """Set extra data when loading project.
+
+        Args:
+            extra_data (dict): Dictionary containing saved state with keys:
+                - 'MWD_m': list of molecular weights
+                - 'MWD_phi': list of volume fractions
+                - 'Zeff': list of effective entanglement numbers
+                - 'with_fene': bool indicating if FENE correction is enabled
+                - 'with_gcorr': bool indicating if modulus correction is enabled
+        """
         self.MWD_m = extra_data["MWD_m"]
         self.MWD_phi = extra_data["MWD_phi"]
         self.Zeff = extra_data["Zeff"]
@@ -638,18 +712,37 @@ class TheoryRolieDoublePoly(QTheory):
         self.LVEenvelopeseries.remove()
 
     def show_theory_extras(self, show=False):
-        """Called when the active theory is changed"""
+        """Called when the active theory is changed.
+
+        Args:
+            show (bool): If True, show theory-specific graphics (LVE envelope).
+                        If False, hide them. Defaults to False.
+        """
         self.Qhide_theory_extras(show)
         # self.extra_graphic_visible(show)
 
     def extra_graphic_visible(self, state):
-        """Change visibility of graphic helpers"""
+        """Change visibility of graphic helpers.
+
+        Args:
+            state (bool): True to make LVE envelope visible, False to hide it.
+        """
         self.view_LVEenvelope = state
         self.LVEenvelopeseries.set_visible(state)
         self.parent_dataset.parent_application.update_plot()
 
     def get_modes(self):
-        """Get the values of Maxwell Modes from this theory"""
+        """Get the values of Maxwell Modes from this theory.
+
+        Extracts the current relaxation spectrum as a discrete set of Maxwell modes,
+        where each mode has a relaxation time and modulus.
+
+        Returns:
+            tuple: (tau, G, success) where:
+                - tau (ndarray): Array of relaxation times for each mode (s).
+                - G (ndarray): Array of moduli for each mode (Pa).
+                - success (bool): Always True, indicating successful extraction.
+        """
         nmodes = self.parameters["nmodes"].value
         tau = np.zeros(nmodes)
         G = np.zeros(nmodes)
@@ -681,7 +774,18 @@ class TheoryRolieDoublePoly(QTheory):
         )
 
     def set_modes(self, tau, G):
-        """Set the values of Maxwell Modes from another theory"""
+        """Set the values of Maxwell Modes from another theory.
+
+        Imports a relaxation spectrum from an external source (e.g., LVE theory).
+        Converts absolute moduli to volume fractions and sets terminal times.
+
+        Args:
+            tau (ndarray): Array of relaxation times for each mode (s).
+            G (ndarray): Array of moduli for each mode (Pa).
+
+        Returns:
+            bool: True if modes were successfully set.
+        """
         nmodes = len(tau)
         self.set_param_value("nmodes", nmodes)
         sum_G = G.sum()
@@ -693,16 +797,52 @@ class TheoryRolieDoublePoly(QTheory):
         return True
 
     def fZ(self, z):
-        """CLF correction function Likthman-McLeish (2002)"""
+        """CLF correction function Likhtman-McLeish (2002).
+
+        Contour length fluctuation correction to relaxation times for entangled polymers.
+
+        Args:
+            z (float): Effective number of entanglements per chain.
+
+        Returns:
+            float: Correction factor f(Z) that multiplies the reptation time.
+                  f(Z) < 1 for finite Z, indicating faster relaxation due to CLF.
+        """
         return 1 - 2 * 1.69 / sqrt(z) + 4.17 / z - 1.55 / (z * sqrt(z))
 
     def gZ(self, z):
-        """CLF correction function for modulus Likthman-McLeish (2002)"""
+        """CLF correction function for modulus Likhtman-McLeish (2002).
+
+        Contour length fluctuation correction to plateau modulus for entangled polymers.
+
+        Args:
+            z (float): Effective number of entanglements per chain.
+
+        Returns:
+            float: Correction factor g(Z) that multiplies the plateau modulus.
+                  g(Z) < 1 for finite Z, reducing effective modulus per mode.
+        """
         return 1 - 1.69 / sqrt(z) + 2.0 / z - 1.24 / (z * sqrt(z))
 
     def sigmadot_shear(self, sigma, t, p):
         """Rolie-Poly differential equation under *shear* flow
-        with stretching and finite extensibility if selected"""
+        with stretching and finite extensibility if selected.
+
+        Computes time derivatives of stress tensor components (sxx_ij, syy_ij, sxy_ij)
+        for all mode pairs under simple shear flow kinematics.
+
+        Args:
+            sigma (ndarray): Current stress tensor components, flattened array of length 3*nmodes^2.
+            t (float): Current time (s).
+            p (list): Parameter list containing [nmodes, lmax, phi_arr, taud_arr, taus_arr,
+                     beta, delta, flow_rate, tmax].
+
+        Returns:
+            ndarray: Time derivatives of stress components, same shape as sigma.
+
+        Raises:
+            EndComputationRequested: If user requests computation stop.
+        """
         if self.stop_theory_flag:
             raise EndComputationRequested
         tmax = p[-1]
@@ -719,7 +859,23 @@ class TheoryRolieDoublePoly(QTheory):
 
     def sigmadot_uext(self, sigma, t, p):
         """Rolie-Poly differential equation under *uniaxial elongational* flow
-        with stretching and finite extensibility if selecter"""
+        with stretching and finite extensibility if selected.
+
+        Computes time derivatives of stress tensor components (sxx_ij, syy_ij) for all
+        mode pairs under uniaxial extensional flow kinematics (szz_ij = syy_ij by symmetry).
+
+        Args:
+            sigma (ndarray): Current stress tensor components, flattened array of length 2*nmodes^2.
+            t (float): Current time (s).
+            p (list): Parameter list containing [nmodes, lmax, phi_arr, taud_arr, taus_arr,
+                     beta, delta, flow_rate, tmax].
+
+        Returns:
+            ndarray: Time derivatives of stress components, same shape as sigma.
+
+        Raises:
+            EndComputationRequested: If user requests computation stop.
+        """
         if self.stop_theory_flag:
             raise EndComputationRequested
         tmax = p[-1]
@@ -736,13 +892,37 @@ class TheoryRolieDoublePoly(QTheory):
         return rpch.compute_derivs_uext(sigma, p, t, wfene)
 
     def calculate_fene(self, l_square, lmax):
-        """calculate finite extensibility function value"""
+        """Calculate finite extensibility function value.
+
+        Computes the FENE (Finitely Extensible Nonlinear Elastic) correction factor
+        that limits polymer chain stretch as it approaches maximum extensibility.
+
+        Args:
+            l_square (float or ndarray): Squared stretch ratio lambda^2.
+            lmax (float): Maximum stretch ratio lambda_max.
+
+        Returns:
+            float or ndarray: FENE correction factor. Approaches infinity as lambda → lambda_max,
+                            preventing unphysical infinite stretch.
+        """
         ilm2 = 1.0 / (lmax * lmax)  # 1/lambda_max^2
         l2_lm2 = l_square * ilm2  # (lambda/lambda_max)^2
         return (3.0 - l2_lm2) / (1.0 - l2_lm2) * (1.0 - ilm2) / (3.0 - ilm2)
 
     def RolieDoublePoly(self, f=None):
-        """Calculate the theory"""
+        """Calculate the theory prediction for nonlinear flow.
+
+        Solves the Rolie-Double-Poly constitutive equations for a polydisperse melt
+        using the Runge-Kutta 4th order integrator. Handles both shear and uniaxial
+        extensional flows with optional FENE and modulus corrections.
+
+        The method integrates n^2 coupled ODEs (one for each mode pair ij) and sums
+        contributions weighted by volume fractions and modulus to obtain the total stress.
+
+        Args:
+            f (DataFile): Data file containing experimental flow curve data with time points
+                         and file parameters including flow rate 'gdot'.
+        """
         ft = f.data_table
         tt = self.tables[f.file_name_short]
         tt.num_columns = ft.num_columns
@@ -862,7 +1042,20 @@ class TheoryRolieDoublePoly(QTheory):
             tt.data[:, 1] *= self.parameters["GN0"].value
 
     def set_param_value(self, name, value):
-        """Set the value of theory parameters"""
+        """Set the value of theory parameters.
+
+        Handles special logic for the 'nmodes' parameter, which dynamically creates or
+        removes mode-specific parameters (phi_i, tauD_i, tauR_i) as the number of modes changes.
+
+        Args:
+            name (str): Parameter name (e.g., 'nmodes', 'GN0', 'phi00', 'tauD01').
+            value (str or float or int): New parameter value.
+
+        Returns:
+            tuple: (message, success) where:
+                - message (str): Error message if unsuccessful, empty string otherwise.
+                - success (bool): True if parameter was successfully set, False otherwise.
+        """
         if name == "nmodes":
             oldn = self.parameters["nmodes"].value
             # self.spinbox.setMaximum(int(value))
@@ -906,7 +1099,15 @@ class TheoryRolieDoublePoly(QTheory):
         return "", True
 
     def do_fit(self, line):
-        """Minimisation procedure disabled in this theory"""
+        """Minimisation procedure disabled in this theory.
+
+        The Rolie-Double-Poly theory does not support automatic parameter optimization
+        due to computational cost and complexity of the parameter space. Parameters must
+        be set manually or imported from MWD data.
+
+        Args:
+            line (str): Command line arguments (ignored).
+        """
         self.Qprint(
             "<font color=red><b>Minimisation procedure disabled in this theory</b></font>"
         )

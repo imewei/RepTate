@@ -117,7 +117,11 @@ class TheoryMultiMetCSTR(QTheory):
         rgt.initialise_tool_bar(self)
 
     def theory_buttons_disabled(self, state):
-        """Disable/Enable some theory buttons before/after calculation start."""
+        """Disable/Enable some theory buttons before/after calculation start.
+
+        Args:
+            state (bool): If True, disable theory buttons. If False, enable them.
+        """
         rgt.theory_buttons_disabled(self, state)
 
     def handle_save_bob_configuration(self):
@@ -129,7 +133,12 @@ class TheoryMultiMetCSTR(QTheory):
         rgt.handle_edit_bob_settings(self)
 
     def handle_btn_prio_senio(self, checked):
-        """Change do_priority_seniority"""
+        """Change do_priority_seniority.
+
+        Args:
+            checked (bool): New state of the priority/seniority toggle button.
+                If True, enable priority/seniority analysis. If False, disable it.
+        """
         rgt.handle_btn_prio_senio(self, checked)
 
 
@@ -139,7 +148,15 @@ class TheoryMultiMetCSTR(QTheory):
         super().request_stop_computations()
 
     def set_extra_data(self, extra_data):
-        """Called when loading a project, set saved parameter values"""
+        """Called when loading a project, set saved parameter values.
+
+        Args:
+            extra_data (dict): Dictionary containing saved theory state data including:
+                - numcat: number of catalyst types
+                - time_const: reactor time constant
+                - monomer_conc: monomer concentration
+                - pvalues: array of catalyst-specific reaction parameters
+        """
         self.numcat = extra_data["numcat"]
         self.time_const = extra_data["time_const"]
         self.monomer_conc = extra_data["monomer_conc"]
@@ -175,7 +192,19 @@ class TheoryMultiMetCSTR(QTheory):
         self.pvalues[1][3] = "0.3"
 
     def Calc(self, f=None):
-        """MultiMetCSTR function that returns the square of y"""
+        """Calculate the Multiple Metallocene CSTR reaction theory.
+
+        Simulates polymerization in a continuous stirred tank reactor (CSTR) with
+        multiple metallocene catalyst types. Creates branched polymer molecules by
+        simulating coordinated polymerization with catalyst-specific reaction rates.
+
+        Args:
+            f (File, optional): Data file to calculate the theory for. Defaults to None.
+
+        Returns:
+            int: Number of molecular weight bins used in the calculation, or 0 if
+                the calculation failed or was stopped.
+        """
 
         # get parameters
         numtomake = np.round(self.parameters["num_to_make"].value)
@@ -372,6 +401,12 @@ class TheoryMultiMetCSTR(QTheory):
         return calc
 
     def show_theory_extras(self, checked):
+        """Show or hide additional theory controls and visualizations.
+
+        Args:
+            checked (bool): If True, show extra theory controls and plots.
+                If False, hide them.
+        """
         rgt.show_theory_extras(self, checked)
 
     def destructor(self):
@@ -379,7 +414,14 @@ class TheoryMultiMetCSTR(QTheory):
         rch.return_dist(ct.c_int(self.ndist))
 
     def do_fit(self, line=""):
-        """No fitting allowed in this theory"""
+        """No fitting allowed in this theory.
+
+        This method only updates the x and y range settings if visible.
+        Actual parameter fitting is not supported for this stochastic simulation.
+
+        Args:
+            line (str, optional): Command line arguments (unused). Defaults to "".
+        """
         if self.xrange.get_visible():
             if self.xmin > self.xmax:
                 temp = self.xmin
@@ -394,5 +436,9 @@ class TheoryMultiMetCSTR(QTheory):
             self.Qprint("<b>yrange</b>=[%.03g, %0.3g]" % (self.ymin, self.ymax))
 
     def do_error(self, line):
-        """This theory does not calculate the error"""
+        """This theory does not calculate the error.
+
+        Args:
+            line (str): The file line identifier (unused in this theory).
+        """
         pass

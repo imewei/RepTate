@@ -186,17 +186,38 @@ class TheoryUCM(QTheory):
         connection_id = self.save_modes_action.triggered.connect(self.save_modes)
 
     def select_shear_flow(self):
+        """Select shear flow mode and update toolbar button.
+
+        Sets the flow mode to shear and updates the toolbar button icon
+        to indicate shear flow geometry is active.
+        """
         self.flow_mode = FlowMode.shear
         self.tbutflow.setDefaultAction(self.shear_flow_action)
 
     def select_extensional_flow(self):
+        """Select extensional flow mode and update toolbar button.
+
+        Sets the flow mode to uniaxial extension and updates the toolbar
+        button icon to indicate extensional flow geometry is active.
+        """
         self.flow_mode = FlowMode.uext
         self.tbutflow.setDefaultAction(self.extensional_flow_action)
 
     def get_modes_reptate(self):
+        """Get Maxwell modes from another RepTate theory.
+
+        Calls the parent class method to copy Maxwell modes (G and tau values)
+        from another theory in the current application, typically from a linear
+        viscoelastic analysis.
+        """
         self.Qcopy_modes()
 
     def edit_modes_window(self):
+        """Open dialog window to manually edit Maxwell mode parameters.
+
+        Displays a table dialog allowing user to edit relaxation times (tau) and
+        moduli (G) for all modes. Updates theory parameters if user accepts changes.
+        """
         times, G, success = self.get_modes()
         if not success:
             self.logger.warning("Could not get modes successfully")
@@ -224,6 +245,11 @@ class TheoryUCM(QTheory):
                 self.handle_actionCalculate_Theory()
 
     def plot_modes_graph(self):
+        """Plot Maxwell modes spectrum (not implemented).
+
+        Placeholder for future implementation of graphical visualization
+        of the relaxation time spectrum.
+        """
         pass
 
     def init_flow_mode(self):
@@ -239,7 +265,14 @@ class TheoryUCM(QTheory):
             self.flow_mode = FlowMode.shear  # default mode: shear
 
     def get_modes(self):
-        """Get the values of Maxwell Modes from this theory"""
+        """Get the values of Maxwell Modes from this theory.
+
+        Returns:
+            tuple: Three-element tuple containing:
+                - ndarray: Relaxation times (tau) for all modes
+                - ndarray: Moduli (G) for all modes
+                - bool: Success flag (always True)
+        """
         nmodes = self.parameters["nmodes"].value
         tau = np.zeros(nmodes)
         G = np.zeros(nmodes)
@@ -249,7 +282,15 @@ class TheoryUCM(QTheory):
         return tau, G, True
 
     def set_modes(self, tau, G):
-        """Set the values of Maxwell Modes from another theory"""
+        """Set the values of Maxwell Modes from another theory.
+
+        Args:
+            tau (array-like): Relaxation times for each mode.
+            G (array-like): Moduli for each mode.
+
+        Returns:
+            bool: True if modes were set successfully.
+        """
         nmodes = len(tau)
         self.set_param_value("nmodes", nmodes)
         for i in range(nmodes):
@@ -259,14 +300,32 @@ class TheoryUCM(QTheory):
 
     def sigma_xy_shear(self, p, times):
         """Upper Convected Maxwell model in shear.
-        Returns XY component of stress tensor"""
+
+        Analytical solution for UCM model in steady shear flow.
+
+        Args:
+            p (list): Parameters [G, tauD, shear_rate].
+            times (ndarray): Time values for evaluation.
+
+        Returns:
+            ndarray: Shear stress component σxy.
+        """
         G, tauD, gd = p
 
         return G * gd * tauD * (1 - np.exp(-times / tauD))
 
     def n1_uext(self, p, times):
         """Upper Convected Maxwell model in uniaxial extension.
-        Returns N1 = (XX -YY) component of stress tensor"""
+
+        Analytical solution for UCM model in steady extensional flow.
+
+        Args:
+            p (list): Parameters [G, tauD, extension_rate].
+            times (ndarray): Time values for evaluation.
+
+        Returns:
+            ndarray: First normal stress difference N1 = (σxx - σyy).
+        """
         G, tauD, ed = p
         w = tauD * ed
         sxx = (1 - 2 * w * np.exp(-(1 - 2 * w) * times / tauD)) / (1 - 2 * w)
@@ -275,7 +334,14 @@ class TheoryUCM(QTheory):
         return G * (sxx - syy)
 
     def calculate_UCM(self, f=None):
-        """Calculate the theory"""
+        """Calculate UCM model predictions for a file.
+
+        Uses analytical solutions for the Upper Convected Maxwell model in
+        both shear and extensional flow geometries.
+
+        Args:
+            f (DataFile): File object containing flow data and parameters.
+        """
         ft = f.data_table
         tt = self.tables[f.file_name_short]
         tt.num_columns = ft.num_columns
@@ -334,7 +400,19 @@ class TheoryUCM(QTheory):
             )
 
     def set_param_value(self, name, value):
-        """Set the value of a theory parameter"""
+        """Set the value of a theory parameter.
+
+        Handles special logic for changing nmodes, including creating/deleting
+        mode parameters as needed.
+
+        Args:
+            name (str): Parameter name to set.
+            value: New value for the parameter.
+
+        Returns:
+            tuple: (message, success) where message is empty string and
+                success is True if parameter was set successfully.
+        """
         if name == "nmodes":
             oldn = self.parameters["nmodes"].value
         message, success = super(TheoryUCM, self).set_param_value(name, value)

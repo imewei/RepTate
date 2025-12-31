@@ -209,13 +209,27 @@ class TheoryPETS(QTheory):
         connection_id = self.linearenvelope.triggered.connect(self.show_linear_envelope)
 
     def Qhide_theory_extras(self, show):
-        """Uncheck the LVE button. Called when curent theory is changed"""
+        """Uncheck the LVE button. Called when curent theory is changed.
+
+        Args:
+            show (bool): If True, set visibility based on linearenvelope checkbox state.
+                If False, hide the LVE envelope series.
+        """
         if show:
             self.LVEenvelopeseries.set_visible(self.linearenvelope.isChecked())
         else:
             self.LVEenvelopeseries.set_visible(False)
 
     def show_linear_envelope(self, state):
+        """Toggle visibility of the linear viscoelastic envelope overlay.
+
+        This method is called when the user clicks the "Show Linear Envelope" toolbar button.
+        It updates the visibility of the LVE envelope graphic helper.
+
+        Args:
+            state (bool): The checked state of the linearenvelope action button.
+                True to show the envelope, False to hide it.
+        """
         self.extra_graphic_visible(state)
         # self.LVEenvelopeseries.set_visible(self.linearenvelope.isChecked())
         # self.plot_theory_stuff()
@@ -250,15 +264,34 @@ class TheoryPETS(QTheory):
         self.LVEenvelopeseries.set_data(x[:, 0], y[:, 0])
 
     def select_shear_flow(self):
+        """Select shear flow mode for PETS calculations.
+
+        This method is called when the user clicks the shear flow button in the toolbar.
+        It sets the flow mode to shear and updates the toolbar button icon.
+        """
         self.flow_mode = FlowMode.shear
         self.tbutflow.setDefaultAction(self.shear_flow_action)
 
     def select_extensional_flow(self):
+        """Select extensional flow mode for PETS calculations.
+
+        This method is called when the user clicks the extensional flow button in the toolbar.
+        It sets the flow mode to uniaxial extension and updates the toolbar button icon.
+        """
         self.flow_mode = FlowMode.uext
         self.tbutflow.setDefaultAction(self.extensional_flow_action)
 
     def set_extra_data(self, extra_data):
-        """Set extra data when loading project"""
+        """Set extra data when loading project.
+
+        This method is called when loading a saved RepTate project to restore
+        theory-specific state that is not stored in the standard parameters.
+        Currently not used by this theory.
+
+        Args:
+            extra_data (dict): Dictionary containing extra theory-specific data
+                saved with the project.
+        """
         pass
 
     def get_extra_data(self):
@@ -284,17 +317,42 @@ class TheoryPETS(QTheory):
         self.LVEenvelopeseries.remove()
 
     def show_theory_extras(self, show=False):
-        """Called when the active theory is changed"""
+        """Called when the active theory is changed.
+
+        This method controls the visibility of theory-specific graphical elements
+        when switching between different theories in the application.
+
+        Args:
+            show (bool): If True, show theory extras. If False, hide them.
+                Defaults to False.
+        """
         self.Qhide_theory_extras(show)
         # self.extra_graphic_visible(self.linearenvelope.isChecked())
 
     def extra_graphic_visible(self, state):
-        """Change visibility of graphic helpers"""
+        """Change visibility of graphic helpers.
+
+        Updates the visibility of the linear viscoelastic envelope curve
+        and refreshes the plot display.
+
+        Args:
+            state (bool): True to make the LVE envelope visible, False to hide it.
+        """
         self.LVEenvelopeseries.set_visible(state)
         self.parent_dataset.parent_application.update_plot()
 
     def get_modes(self):
-        """Get the values of Maxwell Modes from this theory"""
+        """Get the values of Maxwell Modes from this theory.
+
+        Returns a single Maxwell mode with the orientation relaxation time
+        and plateau modulus from the PETS model parameters.
+
+        Returns:
+            tuple: A tuple containing:
+                - tau (np.ndarray): Array of relaxation times (length 1).
+                - G (np.ndarray): Array of moduli (length 1).
+                - success (bool): Always True for this theory.
+        """
         tau = np.zeros(1)
         G = np.zeros(1)
         tau[0] = self.parameters["tauD"].value
@@ -302,8 +360,27 @@ class TheoryPETS(QTheory):
         return tau, G, True
 
     def sigmadot_shear(self, vec, t, p):
-        """PETS differential equation under *shear* flow
-        with stretching and finite extensibility if selected"""
+        """PETS differential equation under shear flow with stretching and finite extensibility.
+
+        Computes the time derivatives of the state variables for the PETS model
+        under shear flow conditions. Includes sticker association/dissociation dynamics,
+        chain orientation, and finite extensibility effects.
+
+        Args:
+            vec (jnp.ndarray): State vector containing [f, ldeq, QAxx, QAyy, QAxy, QDxx, QDyy, QDxy]
+                where f is the fraction of associated stickers, ldeq is the equilibrium stretch,
+                QA are orientation tensor components for associated chains, and QD are orientation
+                tensor components for dissociated chains.
+            t (float): Current time (not explicitly used in the equations).
+            p (jnp.ndarray): Parameter array [Z, r_a, lmax, tauD, tauS, tau_as, tau_free, beta, delta, gammadot]
+                containing model parameters and the shear rate.
+
+        Returns:
+            jnp.ndarray: Array of time derivatives [df, dldeq, dQAxx, dQAyy, dQAxy, dQDxx, dQDyy, dQDxy].
+
+        Raises:
+            EndComputationRequested: If the stop_theory_flag is set during computation.
+        """
         if self.stop_theory_flag:
             raise EndComputationRequested
         f, ldeq, QAxx, QAyy, QAxy, QDxx, QDyy, QDxy = vec
@@ -382,8 +459,27 @@ class TheoryPETS(QTheory):
         return jnp.array([df, dldeq, dQAxx, dQAyy, dQAxy, dQDxx, dQDyy, dQDxy])
 
     def sigmadot_uext(self, vec, t, p):
-        """PETS differential equation under *uext* flow
-        with stretching and finite extensibility if selected"""
+        """PETS differential equation under uniaxial extensional flow with stretching and finite extensibility.
+
+        Computes the time derivatives of the state variables for the PETS model
+        under uniaxial extensional flow conditions. Includes sticker association/dissociation
+        dynamics, chain orientation, and finite extensibility effects.
+
+        Args:
+            vec (jnp.ndarray): State vector containing [f, ldeq, QAxx, QAyy, QDxx, QDyy]
+                where f is the fraction of associated stickers, ldeq is the equilibrium stretch,
+                QA are orientation tensor components for associated chains (xx and yy only due to
+                axial symmetry), and QD are orientation tensor components for dissociated chains.
+            t (float): Current time (not explicitly used in the equations).
+            p (jnp.ndarray): Parameter array [Z, r_a, lmax, tauD, tauS, tau_as, tau_free, beta, delta, epsilon_dot]
+                containing model parameters and the extensional rate.
+
+        Returns:
+            jnp.ndarray: Array of time derivatives [df, dldeq, dQAxx, dQAyy, dQDxx, dQDyy].
+
+        Raises:
+            EndComputationRequested: If the stop_theory_flag is set during computation.
+        """
         if self.stop_theory_flag:
             raise EndComputationRequested
         f, ldeq, QAxx, QAyy, QDxx, QDyy = vec
@@ -472,7 +568,16 @@ class TheoryPETS(QTheory):
         return jnp.array([df, dldeq, dQAxx, dQAyy, dQDxx, dQDyy])
 
     def PETS(self, f=None):
-        """Calculates the theory"""
+        """Calculates the PETS theory predictions for nonlinear viscoelastic flow.
+
+        Solves the PETS constitutive equations using JAX ODE integration to predict
+        the stress response in shear or extensional flow. The flow mode is determined
+        by the current setting of self.flow_mode.
+
+        Args:
+            f (DataFile): Data file containing experimental data and flow parameters.
+                The file must contain 'gdot' in file_parameters specifying the flow rate.
+        """
         ft = f.data_table
         tt = self.tables[f.file_name_short]
         tt.num_columns = ft.num_columns

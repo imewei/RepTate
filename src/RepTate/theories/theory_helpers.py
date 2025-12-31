@@ -182,6 +182,14 @@ class EditModesDialog(QDialog):
         )
 
     def handle_spinboxValueChanged(self, value):
+        """Handle spinbox value change to adjust number of Maxwell modes.
+
+        Updates the table row count when the user changes the number of modes.
+        New rows are initialized with default values for relaxation time (10) and modulus (1000).
+
+        Args:
+            value (int): New number of modes requested by the user.
+        """
         nrow_old = self.table.rowCount()
         self.table.setRowCount(value)
         for i in range(nrow_old, value):  # create extra rows with defaut values
@@ -232,6 +240,11 @@ class EditModesVolFractionsDialog(QDialog):
         )
 
     def accept_(self):
+        """Validate and accept the dialog input.
+
+        Validates that all volume fractions (phi) sum to 1 (within 2% tolerance) before
+        accepting the dialog. If validation fails, displays an error message.
+        """
         sum = 0
         for i in range(self.table.rowCount()):
             sum += float(self.table.item(i, 0).text())
@@ -241,6 +254,14 @@ class EditModesVolFractionsDialog(QDialog):
             QMessageBox.warning(self, "Error", "phi must add up to 1")
 
     def handle_spinboxValueChanged(self, value):
+        """Handle spinbox value change to adjust number of modes.
+
+        Updates the table row count when the user changes the number of modes.
+        New rows are initialized with default values of 0 for all parameters.
+
+        Args:
+            value (int): New number of modes requested by the user.
+        """
         nrow_old = self.table.rowCount()
         self.table.setRowCount(value)
         for i in range(nrow_old, value):  # create extra rows with defaut values
@@ -346,6 +367,11 @@ class EditMWDDialog(QDialog):
         )
 
     def accept_(self):
+        """Validate and accept the dialog input.
+
+        Validates that all volume fractions (phi, column 1) sum to 1 (within 2% tolerance)
+        before accepting the dialog. If validation fails, displays an error message.
+        """
         sum = 0
         for i in range(self.table.rowCount()):
             sum += float(self.table.item(i, 1).text())
@@ -355,6 +381,15 @@ class EditMWDDialog(QDialog):
             QMessageBox.warning(self, "Error", "phi must add up to 1")
 
     def handle_spinboxValueChanged(self, value):
+        """Handle spinbox value change to adjust number of molecular weight distribution bins.
+
+        Updates the table row count when the user changes the number of MWD bins.
+        New rows are initialized with default values for molecular weight (0) and
+        volume fraction (1000).
+
+        Args:
+            value (int): New number of MWD bins requested by the user.
+        """
         nrow_old = self.table.rowCount()
         self.table.setRowCount(value)
         for i in range(nrow_old, value):  # create extra rows with defaut values
@@ -384,9 +419,18 @@ class Dilution:
         self.res = self.relax_times_from_mwd(m, phi, taue, Me)
 
     def find_down_indx(self, tauseff, taud):
-        """Find index i such that taud[i] < tauseff < taud[i+1]
-        or returns -1 if tauseff < taud[0]
-        or returns n-1 if tauseff > taud[n-1] (should not happen)
+        """Find index i such that taud[i] < tauseff < taud[i+1].
+
+        Locates the position of tauseff within the sorted taud array by searching
+        backwards from the end.
+
+        Args:
+            tauseff (float): Effective stretch relaxation time to locate.
+            taud (list[float]): Sorted array of reptation times.
+
+        Returns:
+            int: Index i where taud[i] < tauseff < taud[i+1], or -1 if tauseff < taud[0],
+                or n-1 if tauseff > taud[n-1] (should not happen in normal operation).
         """
         n = len(taud)
         down = n - 1
@@ -398,7 +442,22 @@ class Dilution:
         return down
 
     def find_dilution(self, phi, taud, taus, interp=True):
-        """Find the dilution factor phi_dil for a chain with bare stretch relax time `taus`"""
+        """Find the dilution factor phi_dil for a chain with bare stretch relax time `taus`.
+
+        Calculates the effective dilution experienced by a chain based on its stretch
+        relaxation time relative to the reptation times of other chains in the blend.
+
+        Args:
+            phi (list[float]): Volume fractions of each species.
+            taud (list[float]): Reptation times of each species.
+            taus (float): Bare stretch relaxation time of the chain.
+            interp (bool): If True, use linear interpolation for phi_dil calculation.
+                Defaults to True.
+
+        Returns:
+            float: Dilution factor phi_dil, representing the effective concentration
+                experienced by the chain.
+        """
         n = len(phi)
         temp = -1
         phi_dil = 1
@@ -433,7 +492,18 @@ class Dilution:
         return phi_dil
 
     def sort_list(self, m, phi):
-        """Ensure m[0] <= m[1] <=  ... <= m[n]"""
+        """Ensure m[0] <= m[1] <=  ... <= m[n].
+
+        Sorts the molecular weight array and reorders the volume fraction array accordingly.
+        If already sorted, returns the original arrays unchanged.
+
+        Args:
+            m (list[float]): Molecular weights to be sorted.
+            phi (list[float]): Volume fractions corresponding to each molecular weight.
+
+        Returns:
+            tuple[list[float], list[float]]: Sorted (m, phi) arrays in ascending order of m.
+        """
         if all(m[i] <= m[i + 1] for i in range(len(m) - 1)):
             # list aready sorted
             return m, phi
@@ -444,10 +514,23 @@ class Dilution:
 
     def relax_times_from_mwd(self, m, phi, taue, Me):
         """Guess relaxation times of linear rheology (taud) from molecular weight distribution.
+
+        Applies the following physics:
         (i) Count short chains (M < 2*Me) as solvent
         (ii) The effective dilution at a given timescale t is equal to the sum of
         the volume fractions of all chains with relaxation time greater than t
         (iii) CLF makes use of the most diluted tube available at the CLF timescale
+
+        Args:
+            m (list[float]): Molecular weights of each species.
+            phi (list[float]): Volume fractions of each species.
+            taue (float): Entanglement time.
+            Me (float): Entanglement molecular weight.
+
+        Returns:
+            list: A list containing [success, phi, taus, taud] where success is a boolean,
+                phi are the normalized volume fractions, taus are the stretch relaxation times,
+                and taud are the reptation times. Returns [False] if all chains are solvent.
         """
         # m[0] < m[1] <  ... < m[n]
         m, phi = self.sort_list(m, phi)

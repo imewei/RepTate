@@ -163,6 +163,18 @@ class TheoryLikhtmanMcLeish2002(QTheory):
         connection_id = self.txtrho.textEdited.connect(self.handle_txtrho_edited)
 
     def linkMeGeaction_change(self, checked):
+        """Handle the Link Me-Ge button toggle.
+
+        When enabled, this feature links the entanglement modulus (Ge) to the
+        entanglement molecular weight (Me) through the thermodynamic relationship
+        Ge = rho * R * T / Me. The Ge parameter becomes non-optimizable and is
+        calculated from Me, density, and temperature. The rho text field becomes
+        editable when this option is enabled.
+
+        Args:
+            checked (bool): The checked state of the linkMeGeaction button.
+                True to enable linking, False to disable.
+        """
         self.set_param_value("linkMeGe", checked)
         if checked:
             self.txtrho.setReadOnly(False)
@@ -179,6 +191,15 @@ class TheoryLikhtmanMcLeish2002(QTheory):
             self.handle_actionCalculate_Theory()
 
     def handle_txtrho_edited(self, new_text):
+        """Handle editing of the density text field.
+
+        Validates and updates the rho0 parameter when the user edits the density
+        value in the toolbar text field. If the input cannot be converted to a
+        float, displays an error message and reverts to the previous value.
+
+        Args:
+            new_text (str): The new text entered by the user in the rho text field.
+        """
         try:
             val = float(new_text)
         except ValueError:
@@ -192,7 +213,15 @@ class TheoryLikhtmanMcLeish2002(QTheory):
                 self.handle_actionCalculate_Theory()
 
     def set_extra_data(self, _):
-        """Restore the check state of button and text value"""
+        """Restore the check state of button and text value.
+
+        This method is called when loading a saved RepTate project to restore
+        the state of the Link Me-Ge button and the density text field.
+
+        Args:
+            _ (dict): Extra data dictionary (not used by this theory, underscore
+                indicates it is intentionally ignored).
+        """
         self.txtrho.setText("%.4g" % self.parameters["rho0"].value)
         checked = self.parameters["linkMeGe"].value
         self.linkMeGeaction.setChecked(checked)
@@ -256,11 +285,16 @@ class TheoryLikhtmanMcLeish2002(QTheory):
         tt.data[:, 2] = interp(tt.data[:, 0], table[:, 0] / taue, Ge * table[:, 2])
 
     def do_error(self, line):
-        """Report the error of the current theory
+        """Report the error of the current theory.
 
         Report the error of the current theory on all the files, taking into account the current selected xrange and yrange.
+        Also prints a table with the number of entanglements (Z), Rouse time (tauR), and reptation time (tauD)
+        for each file, calculated from the theory parameters.
 
         File error is calculated as the mean square of the residual, averaged over all points in the file. Total error is the mean square of the residual, averaged over all points in all files.
+
+        Args:
+            line (str): Command line arguments (passed to base class).
         """
         super().do_error(line)
         taue = self.parameters["tau_e"].value

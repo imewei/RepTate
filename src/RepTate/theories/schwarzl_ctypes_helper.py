@@ -54,6 +54,25 @@ schwarzl_gt.restype = None
 
 
 def do_schwarzl_gt(n_data, value_g_of_t, time_g_of_t):
+    """Convert time-domain relaxation modulus to frequency-domain moduli.
+
+    Applies the Schwarzl transformation to convert G(t) data in the time domain
+    to storage modulus G'(w) and loss modulus G''(w) in the frequency domain.
+    This approximate interconversion allows prediction of oscillatory behavior
+    from stress relaxation measurements.
+
+    Args:
+        n_data (int): Number of data points in input arrays
+        value_g_of_t (np.ndarray): Relaxation modulus G(t) values (Pa)
+        time_g_of_t (np.ndarray): Time values corresponding to G(t) (s)
+
+    Returns:
+        tuple: (out_wp, out_Gp, out_wpp, out_Gpp) where:
+            - out_wp (c_double array): Frequencies for G' (rad/s)
+            - out_Gp (c_double array): Storage modulus G'(w) values (Pa)
+            - out_wpp (c_double array): Frequencies for G'' (rad/s)
+            - out_Gpp (c_double array): Loss modulus G''(w) values (Pa)
+    """
 
     c_gt = (c_double * n_data)()
     c_time = (c_double * n_data)()

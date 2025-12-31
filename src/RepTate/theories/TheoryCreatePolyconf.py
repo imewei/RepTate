@@ -303,7 +303,16 @@ class TheoryCreatePolyconf(QTheory):
         self.btn_prio_senio.triggered.connect(self.handle_btn_prio_senio)
 
     def handle_btn_prio_senio(self, checked):
-        """Change do_priority_seniority"""
+        """Toggle priority and seniority calculation.
+
+        Enables or disables the calculation of polymer chain priority and
+        seniority values. These calculations can be computationally expensive
+        for large polymer configurations.
+
+        Args:
+            checked (bool): True to enable priority/seniority calculation,
+                False to disable it.
+        """
         self.do_priority_seniority = checked
 
     def setup_dialog(self):
@@ -360,8 +369,17 @@ FunH
             self.dialog.accept()
 
     def handle_apply_button(self):
-        """When Apply button of dialog box is clicked,
-        fill the "Result" widget with the data expected by BoB"""
+        """Process dialog inputs and generate BoB input data.
+
+        When Apply button of dialog box is clicked, validates user inputs
+        and fills the "Result" widget with the formatted data expected by BoB.
+        Constructs the virtual input file for BoB based on all polymer
+        components and their parameters.
+
+        Returns:
+            bool: True if successful, False if validation fails (missing file
+                or no components defined).
+        """
         if self.polyconf_file_out is None:
             QMessageBox.warning(
                 self,
@@ -472,8 +490,20 @@ FunH
         return True
 
     def poly_param_text(self, pol_dict, attr):
-        """Return a string containing the value of the parameter ``attr``
-        or a  new line if ``attr`` is an empty string
+        """Extract parameter value as formatted string for BoB input.
+
+        Returns a string containing the value of the parameter with name
+        ``attr`` from the polymer dictionary, or a newline if ``attr``
+        is an empty string (used for formatting).
+
+        Args:
+            pol_dict (dict): Polymer component dictionary containing QWidget
+                parameter objects.
+            attr (str): Parameter name to extract (e.g., "Mw (g/mol)", "PDI").
+
+        Returns:
+            str: Formatted parameter value followed by space, or newline
+                if attr is empty string.
         """
         if attr == "":
             text = "\n"
@@ -488,8 +518,14 @@ FunH
         return text
 
     def sum_ratios(self):
-        """Return the (float) sum of the ratio of all polymer components
-        or 1 if there are none"""
+        """Calculate total ratio of all polymer components.
+
+        Sums the ratio (weight fraction) values of all polymer components
+        in the blend. Returns 1.0 if the sum is zero to avoid division errors.
+
+        Returns:
+            float: Sum of all component ratios, or 1.0 if sum is zero.
+        """
         s = 0.0
         for pol_dict in self.dict_component.values():
             try:
@@ -508,9 +544,16 @@ FunH
         QDesktopServices.openUrl(QUrl.fromLocalFile(bob_manual_pdf))
 
     def handle_architecture_type_changed(self, current_name):
-        """Activate/Desactivate the 'ngeneration' widgets
-        specific to the Cayley types.
-        Called when the combobox 'Architecture' is changed"""
+        """Update UI based on selected architecture type.
+
+        Activates or deactivates the 'ngeneration' widgets specific to
+        Cayley tree polymer architectures. Called when the combobox
+        'Architecture' selection is changed.
+
+        Args:
+            current_name (str): Name of the newly selected architecture type
+                (e.g., "Linear Polymer", "Cayley 3-arm Core").
+        """
         is_cayley = "Cayley" in current_name
         self.d.ngeneration_label.setDisabled(not is_cayley)
         self.d.sb_ngeneration.setDisabled(not is_cayley)
@@ -538,8 +581,20 @@ FunH
             self.handle_close_polymer_tab(index)
 
     def create_new_tab(self, pol_id, pol_type):
-        """Return a new widget containing a form with all the parameters
-        specific to the polymer type ``pol_type``
+        """Create new tab widget with polymer-specific parameter form.
+
+        Constructs and returns a new widget containing a form with all
+        parameters specific to the polymer architecture type ``pol_type``.
+        The form includes ratio, number of polymers, and architecture-specific
+        parameters (Mw, PDI, distribution type, etc.).
+
+        Args:
+            pol_id (str): Unique identifier for this polymer component.
+            pol_type (str): Architecture type name (enum name from ArchitectureType).
+
+        Returns:
+            tuple: (QWidget containing the parameter form, bool success flag).
+                Success is False if user cancels file selection for "From File" type.
         """
         widget = QWidget(self)
         layout = QFormLayout()
@@ -576,8 +631,20 @@ FunH
             return widget, False
 
     def set_extra_lines(self, pol_type, layout, pol_dict):
-        """Add extra parameter lines related to the polymer architecture ``pol_type``
-        to the form layout
+        """Add architecture-specific parameter lines to form layout.
+
+        Adds extra parameter input fields related to the polymer architecture
+        ``pol_type`` to the form layout. Parameters vary by architecture:
+        Linear (Mw, PDI), Star (+ num arms), Comb (backbone + side arms),
+        Cayley (multiple generations), etc.
+
+        Args:
+            pol_type (str): Architecture type name (enum name from ArchitectureType).
+            layout (QFormLayout): Form layout to add parameter widgets to.
+            pol_dict (dict): Dictionary to store parameter widget references.
+
+        Returns:
+            bool: True if successful, False if user cancels (e.g., file selection).
         """
         # return a list with the expected input parameters
         pol_attr = ArchitectureType[pol_type].value["def"]
@@ -706,7 +773,15 @@ FunH
         return True  # success
 
     def get_file_path(self):
-        """Select a polyconf file for BoB to read"""
+        """Open file browser to select polymer configuration file.
+
+        Launches a file dialog for the user to select a pre-existing
+        polymer configuration file (.dat) that BoB will read for the
+        "From File" architecture type.
+
+        Returns:
+            str: Absolute path to selected file, or empty string if cancelled.
+        """
         # file browser window
         options = QFileDialog.Options()
         dir_start = os.path.join(RepTate.root_dir, "data", "React")
@@ -727,8 +802,21 @@ FunH
         tip="",
         editable=True,
     ):
-        """Add a new line to the form layout containing a QLabel widget
-        for the parameter name and a QLineEdit to change the parameter value"""
+        """Add parameter input line to form layout.
+
+        Adds a new row to the form layout containing a QLabel widget
+        for the parameter name and a QLineEdit widget for entering/displaying
+        the parameter value.
+
+        Args:
+            name (str): Parameter name to display as label.
+            default_val (str): Default value to populate in QLineEdit.
+            layout (QFormLayout): Form layout to add the row to.
+            pol_dict (dict): Dictionary to store the QLineEdit widget reference.
+            validator (QValidator, optional): Input validator (default: QDoubleValidator).
+            tip (str, optional): Tooltip text for both label and input field.
+            editable (bool, optional): Whether field is editable (default: True).
+        """
         validator.setBottom(0)  # set smallest double allowed in the form
         e = QLineEdit()
         e.setValidator(validator)
@@ -754,8 +842,15 @@ FunH
         pol_dict[name] = cb
 
     def handle_close_polymer_tab(self, index):
-        """Close a tab and delete dictionary entry
-        Called when the close-tab button is clicked"""
+        """Remove polymer component tab from dialog.
+
+        Closes a polymer component tab and deletes its dictionary entry.
+        Also manages the prototype text box visibility when closing
+        Prototype architecture tabs.
+
+        Args:
+            index (int): Tab index to close.
+        """
         name = self.d.polymer_tab.tabText(index)
         ind = int("".join(c for c in name if c.isdigit()))  # get the tab number
         del self.dict_component[name]
@@ -853,7 +948,18 @@ FunH
         self.d.selected_file.setText(os.path.basename(out_file[0]))
 
     def is_ascii(self, s):
-        """Check if `s` contains non ASCII characters"""
+        """Check if string contains only ASCII characters.
+
+        Tests whether the input string can be encoded as ASCII,
+        which is important for compatibility with BoB C++ code.
+
+        Args:
+            s (str): String to test (typically a file path).
+
+        Returns:
+            bool: True if string is pure ASCII, False if it contains
+                non-ASCII (e.g., Unicode) characters.
+        """
         try:
             s.encode("ascii")
             return True
@@ -867,7 +973,14 @@ FunH
         self.bch.set_flag_stop_bob(ctypes.c_bool(True))
 
     def do_error(self, line=""):
-        """This theory does not calculate the error"""
+        """Error calculation disabled for this theory.
+
+        This theory generates polymer configurations rather than fitting
+        data, so error calculation is not applicable.
+
+        Args:
+            line (str): Command line arguments (ignored).
+        """
         pass
 
     def calculate(self, f=None):

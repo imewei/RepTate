@@ -70,14 +70,24 @@ class TheoryTemplate(QTheory):
 
     def get_modes(self):
         """If the theory provides Maxwell modes, fill this up (see examples in TheoryMaxwellModes.
-If the theory does not provide modes, simply delete this function."""
+If the theory does not provide modes, simply delete this function.
+
+        Returns:
+            tuple[np.ndarray, np.ndarray, bool]: A tuple containing (tau, G, success) where
+                tau is an array of relaxation times, G is an array of moduli, and success
+                indicates if modes were successfully retrieved.
+        """
         tau = np.ones(1)
         G = np.ones(1)
         return tau, G, False
 
     def set_modes(self):
         """If the theory provides Maxwell modes, fill this up (see examples in TheoryMaxwellModes.
-If the theory does not provide modes, simply delete this function."""
+If the theory does not provide modes, simply delete this function.
+
+        Returns:
+            bool: False, indicating that setting modes is not allowed in this theory template.
+        """
         self.logger.info("set_modes not allowed in this theory (%s)" % elf.thname)
         return False
 

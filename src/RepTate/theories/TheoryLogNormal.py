@@ -103,11 +103,20 @@ class TheoryLogNormal(QTheory):
         tt.data[:, 1] = W0 / (sigma * np.sqrt(2 * np.pi)) * np.exp(-((np.log(tt.data[:, 0]) - (np.log(M0) + sigma**2)) ** 2) / 2 / sigma ** 2)
 
     def do_error(self, line):
-        """Report the error of the current theory
+        """Report the error of the current theory and calculate MWD characteristics.
 
-Report the error of the current theory on all the files, taking into account the current selected xrange and yrange.
+        Report the error of the current theory on all the files, taking into account
+        the current selected xrange and yrange. Additionally, calculate and display
+        the molecular weight distribution characteristics (Mn, Mw, Mz, PDI) for the
+        log-normal distribution.
 
-File error is calculated as the mean square of the residual, averaged over all points in the file. Total error is the mean square of the residual, averaged over all points in all files."""
+        File error is calculated as the mean square of the residual, averaged over
+        all points in the file. Total error is the mean square of the residual,
+        averaged over all points in all files.
+
+        Args:
+            line (str): Command line arguments. If empty string, also prints MWD characteristics.
+        """
         super().do_error(line)
         if line == "":
             self.Qprint("""<h3>Characteristics of the fitted MWD</h3>""")
