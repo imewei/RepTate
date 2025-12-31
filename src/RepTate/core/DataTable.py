@@ -32,58 +32,68 @@
 # --------------------------------------------------------------------------------------------------------
 """Module DataTable
 
-Module for the actual object that contains the data, both for experiments and theory. 
+Module for the actual object that contains the data, both for experiments and theory.
 
-""" 
+"""
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any
+
 import numpy as np
+from numpy.typing import NDArray
 
-class DataTable(object):
+if TYPE_CHECKING:
+    from matplotlib.axes import Axes
+    from matplotlib.lines import Line2D
+
+
+class DataTable:
     """Class that stores data and series"""
-    MAX_NUM_SERIES=3
-    PICKRADIUS = 10
+    MAX_NUM_SERIES: int = 3
+    PICKRADIUS: int = 10
 
-    def __init__(self, axarr=None, _name=''):
+    def __init__(self, axarr: list[Axes] | None = None, _name: str = '') -> None:
         """**Constructor**"""
-        self.num_columns=0
-        self.num_rows=0
-        self.column_names=[]
-        self.column_units=[]
-        self.data=np.zeros((self.num_rows, self.num_columns))
-        self.series=[]
-        self.extra_tables = {}
-        
-        if axarr != None:
-            for nx in range(len(axarr)): #create series for each plot
-                series_nx = []
-                for i in range(DataTable.MAX_NUM_SERIES): 
+        self.num_columns: int = 0
+        self.num_rows: int = 0
+        self.column_names: list[str] = []
+        self.column_units: list[str] = []
+        self.data: NDArray[np.floating[Any]] = np.zeros((self.num_rows, self.num_columns))
+        self.series: list[list[Line2D]] = []
+        self.extra_tables: dict[str, NDArray[np.floating[Any]]] = {}
+
+        if axarr is not None:
+            for nx in range(len(axarr)):  # create series for each plot
+                series_nx: list[Line2D] = []
+                for i in range(DataTable.MAX_NUM_SERIES):
                     ss = axarr[nx].plot([], [], label='', picker=self.PICKRADIUS)
                     if i == 0:
-                        ss[0]._name = _name #define artist name
-                    else:    
-                        ss[0]._name = _name + " #%d"%(i + 1) #define artist name
+                        ss[0]._name = _name  # define artist name
+                    else:
+                        ss[0]._name = _name + " #%d" % (i + 1)  # define artist name
                     series_nx.append(ss[0])
                 self.series.append(series_nx)
 
-    def __str__(self):
+    def __str__(self) -> str:
         """Returns a string describing the data
 
         .. todo:: Refine this. It doesn't work
 
         """
-        return self.data
-        
-    def mincol(self, col):
+        return str(self.data)
+
+    def mincol(self, col: int) -> np.floating[Any]:
         """Minimum value in table column col
-        
+
         .. todo:: Example **todo** in the code
         """
-        return np.min(self.data[:,col])
-        
-    def minpositivecol(self, col):
-        """Minimum positive value in table column col"""
-        return (self.data[self.data[:,col]>0,col]).min()
+        return np.min(self.data[:, col])
 
-    def maxcol(self, col):
+    def minpositivecol(self, col: int) -> np.floating[Any]:
+        """Minimum positive value in table column col"""
+        return (self.data[self.data[:, col] > 0, col]).min()
+
+    def maxcol(self, col: int) -> np.floating[Any]:
         """Maximum value in table column col"""
-        return np.max(self.data[:,col])
+        return np.max(self.data[:, col])
         

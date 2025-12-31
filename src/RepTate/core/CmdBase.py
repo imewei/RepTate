@@ -37,8 +37,6 @@ Module that defines the basic command line interaction with the user.
 """
 import enum
 
-from numpy import *
-
 
 class CalcMode(enum.Enum):
     """Operation mode: Single or Multithread"""

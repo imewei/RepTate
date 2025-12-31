@@ -43,14 +43,13 @@ from RepTate.core.DataTable import DataTable
 from PySide6.QtWidgets import QToolBar, QToolButton, QMenu, QMessageBox, QFileDialog
 from PySide6.QtCore import QSize
 from PySide6.QtGui import QIcon
-from RepTate.gui.Theory_rc import *
+import RepTate.gui.Theory_rc  # noqa: F401 - registers Qt resources
 from math import sqrt
 import time
 import RepTate
 
 import RepTate.theories.rp_blend_ctypes_helper as rpch
 import RepTate.theories.QuiescentSmoothStrand as QuiescentSmoothStrand
-from collections import OrderedDict
 
 import RepTate.theories.SmoothPolySTRAND as SmoothPolySTRAND
 import RepTate.theories.SchneiderRate as SchneiderRate
@@ -586,7 +585,7 @@ class TheorySmoothPolyStrand(QTheory):
             phi[i] = self.parameters["phi%02d" % i].value
             taud[i] = self.parameters["tauD%02d" % i].value
             taur[i] = self.parameters["tauR%02d" % i].value
-        param_dic = OrderedDict()
+        param_dic = {}
         param_dic["phi"] = phi
         param_dic["tauD"] = taud
         param_dic["tauR"] = taur

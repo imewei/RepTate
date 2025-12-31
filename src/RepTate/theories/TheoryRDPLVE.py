@@ -41,7 +41,6 @@ from PySide6.QtWidgets import QToolBar, QToolButton, QMenu, QMessageBox
 from PySide6.QtCore import QSize
 from PySide6.QtGui import QIcon
 from math import sqrt
-from collections import OrderedDict
 from RepTate.theories.theory_helpers import (
     Dilution,
     GcorrMode,
@@ -261,7 +260,7 @@ class TheoryRDPLVE(QTheory):
         for i in range(nmodes):
             phi[i] = self.parameters["phi%02d" % i].value
             taud[i] = self.parameters["tauD%02d" % i].value
-        param_dic = OrderedDict()
+        param_dic = {}
         param_dic["phi"] = phi
         param_dic["tauD"] = taud
         d = EditModesVolFractionsDialog(self, param_dic, self.MAX_MODES)

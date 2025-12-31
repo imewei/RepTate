@@ -43,14 +43,13 @@ from RepTate.core.DataTable import DataTable
 from PySide6.QtWidgets import QToolBar, QToolButton, QMenu, QMessageBox, QFileDialog
 from PySide6.QtCore import QSize
 from PySide6.QtGui import QIcon
-from RepTate.gui.Theory_rc import *
+import RepTate.gui.Theory_rc  # noqa: F401 - registers Qt resources
 from math import sqrt
 import time
 import RepTate
 
 import RepTate.theories.rp_blend_ctypes_helper as rpch
 from RepTate.core.jax_ops.ode import rk4_integrate
-from collections import OrderedDict
 from RepTate.theories.theory_helpers import (
     FlowMode,
     EditModesVolFractionsDialog,
@@ -489,7 +488,7 @@ class TheoryRolieDoublePoly(QTheory):
             phi[i] = self.parameters["phi%02d" % i].value
             taud[i] = self.parameters["tauD%02d" % i].value
             taur[i] = self.parameters["tauR%02d" % i].value
-        param_dic = OrderedDict()
+        param_dic = {}
         param_dic["phi"] = phi
         param_dic["tauD"] = taud
         param_dic["tauR"] = taur

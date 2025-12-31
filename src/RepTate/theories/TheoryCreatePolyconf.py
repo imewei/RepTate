@@ -41,7 +41,6 @@ import enum
 import RepTate
 from RepTate.core.Parameter import Parameter, ParameterType, OptType
 from RepTate.gui.QTheory import QTheory
-from collections import OrderedDict
 import time
 
 import ctypes
@@ -287,7 +286,7 @@ class TheoryCreatePolyconf(QTheory):
 
         self.ncomponent = 1
         self.trash_indices = []
-        self.dict_component = OrderedDict()
+        self.dict_component = {}
         self.setup_dialog()
         self.flag_prototype = 0
 
@@ -544,7 +543,7 @@ FunH
         """
         widget = QWidget(self)
         layout = QFormLayout()
-        pol_dict = OrderedDict([("type", pol_type),])  # Arch. enum type number
+        pol_dict = dict([("type", pol_type),])  # Arch. enum type number
 
         val_double = QDoubleValidator()
         val_double.setBottom(0)  # set smallest double allowed in the form

@@ -41,7 +41,7 @@ from RepTate.gui.QTheory import QTheory, EndComputationRequested
 from PySide6.QtWidgets import QToolBar, QToolButton, QMenu, QSpinBox, QMessageBox
 from PySide6.QtCore import QSize
 from PySide6.QtGui import QIcon
-from RepTate.gui.Theory_rc import *
+import RepTate.gui.Theory_rc  # noqa: F401 - registers Qt resources
 from RepTate.applications.ApplicationLAOS import ApplicationLAOS
 from RepTate.theories.theory_helpers import FlowMode, EditModesDialog
 from RepTate.core.jax_ops.ode import rk4_integrate

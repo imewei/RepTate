@@ -35,21 +35,33 @@
 Module that defines the basic theories that should be available for all Applications.
 
 """
-from numpy import *
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any
+
 import numpy as np
 import re
 from RepTate.gui.QTheory import QTheory
 from RepTate.core.Parameter import Parameter, ParameterType, OptType
+from RepTate.core.feature_flags import is_enabled
 from PySide6.QtWidgets import QToolBar, QSpinBox, QComboBox
 from PySide6.QtCore import QSize
 
+if TYPE_CHECKING:
+    from matplotlib.axes import Axes
+    from RepTate.core.File import File
+
+# Conditionally import safe_eval for secure expression evaluation
+if is_enabled('USE_SAFE_EVAL'):
+    from RepTate.core.safe_eval import safe_eval_array, SafeArrayExpression
+
 """
-             _                             _       _ 
+             _                             _       _
  _ __   ___ | |_   _ _ __   ___  _ __ ___ (_) __ _| |
 | '_ \ / _ \| | | | | '_ \ / _ \| '_ ` _ \| |/ _` | |
 | |_) | (_) | | |_| | | | | (_) | | | | | | | (_| | |
 | .__/ \___/|_|\__, |_| |_|\___/|_| |_| |_|_|\__,_|_|
-|_|            |___/                                 
+|_|            |___/
 """
 
 class TheoryPolynomial(QTheory):
@@ -165,9 +177,9 @@ class TheoryPolynomial(QTheory):
 """
  _ __   _____      _____ _ __  | | __ ___      __
 | '_ \ / _ \ \ /\ / / _ \ '__| | |/ _` \ \ /\ / /
-| |_) | (_) \ V  V /  __/ |    | | (_| |\ V  V / 
-| .__/ \___/ \_/\_/ \___|_|    |_|\__,_| \_/\_/  
-|_|                                              
+| |_) | (_) \ V  V /  __/ |    | | (_| |\ V  V /
+| .__/ \___/ \_/\_/ \___|_|    |_|\__,_| \_/\_/
+|_|
 """
 
 class TheoryPowerLaw(QTheory):
@@ -216,12 +228,12 @@ class TheoryPowerLaw(QTheory):
 
 
 """
-                                        _   _       _ 
+                                        _   _       _
   _____  ___ __   ___  _ __   ___ _ __ | |_(_) __ _| |
  / _ \ \/ / '_ \ / _ \| '_ \ / _ \ '_ \| __| |/ _` | |
 |  __/>  <| |_) | (_) | | | |  __/ | | | |_| | (_| | |
  \___/_/\_\ .__/ \___/|_| |_|\___|_| |_|\__|_|\__,_|_|
-          |_|                                         
+          |_|
 """
 
 class TheoryExponential(QTheory):
@@ -270,12 +282,12 @@ class TheoryExponential(QTheory):
 
 
 """
- ____                                           _   _       _     
-|___ \    _____  ___ __   ___  _ __   ___ _ __ | |_(_) __ _| |___ 
+ ____                                           _   _       _
+|___ \    _____  ___ __   ___  _ __   ___ _ __ | |_(_) __ _| |___
   __) |  / _ \ \/ / '_ \ / _ \| '_ \ / _ \ '_ \| __| |/ _` | / __|
  / __/  |  __/>  <| |_) | (_) | | | |  __/ | | | |_| | (_| | \__ \
 |_____|  \___/_/\_\ .__/ \___/|_| |_|\___|_| |_|\__|_|\__,_|_|___/
-                  |_|                                             
+                  |_|
 """
 
 class TheoryTwoExponentials(QTheory):
@@ -339,23 +351,23 @@ class TheoryTwoExponentials(QTheory):
 
 
 """
-       _            _               _      
-  __ _| | __ _  ___| |__  _ __ __ _(_) ___ 
+       _            _               _
+  __ _| | __ _  ___| |__  _ __ __ _(_) ___
  / _` | |/ _` |/ _ \ '_ \| '__/ _` | |/ __|
-| (_| | | (_| |  __/ |_) | | | (_| | | (__ 
+| (_| | | (_| |  __/ |_) | | | (_| | | (__
  \__,_|_|\__, |\___|_.__/|_|  \__,_|_|\___|
-         |___/                             
-                                   _             
-  _____  ___ __  _ __ ___  ___ ___(_) ___  _ __  
- / _ \ \/ / '_ \| '__/ _ \/ __/ __| |/ _ \| '_ \ 
+         |___/
+                                   _
+  _____  ___ __  _ __ ___  ___ ___(_) ___  _ __
+ / _ \ \/ / '_ \| '__/ _ \/ __/ __| |/ _ \| '_ \
 |  __/>  <| |_) | | |  __/\__ \__ \ | (_) | | | |
  \___/_/\_\ .__/|_|  \___||___/___/_|\___/|_| |_|
-          |_|                                    
+          |_|
 """
 
 class TheoryAlgebraicExpression(QTheory):
-    """Fit a user algebraic expression with :math:`n` parameters. 
-    
+    """Fit a user algebraic expression with :math:`n` parameters.
+
     The expression can contain any of the following mathematical functions: sin, cos, tan, arccos, arcsin, arctan, arctan2, deg2rad, rad2deg, sinh, cosh, tanh, arcsinh, arccosh, arctanh, around, round, rint, floor, ceil,trunc, exp, log, log10, fabs, mod, e, pi, power, sqrt
 
     It is the responsability of the user to input functions that make mathematical sense.
@@ -400,7 +412,8 @@ class TheoryAlgebraicExpression(QTheory):
                 ParameterType.real,
                 opt_type=OptType.opt)
 
-        safe_list = ['sin', 'cos', 'tan', 'arccos', 'arcsin', 'arctan', 'arctan2', 'deg2rad', 'rad2deg', 'sinh', 'cosh', 'tanh', 'arcsinh', 'arccosh', 'arctanh', 'around', 'round_', 'rint', 'floor', 'ceil','trunc', 'exp', 'log', 'log10', 'fabs', 'mod', 'e', 'pi', 'power', 'sqrt']
+        # Legacy safe_dict for backward compatibility when USE_SAFE_EVAL is disabled
+        safe_list = ['sin', 'cos', 'tan', 'arccos', 'arcsin', 'arctan', 'arctan2', 'deg2rad', 'rad2deg', 'sinh', 'cosh', 'tanh', 'arcsinh', 'arccosh', 'arctanh', 'around', 'round', 'rint', 'floor', 'ceil','trunc', 'exp', 'log', 'log10', 'fabs', 'mod', 'e', 'pi', 'power', 'sqrt']
         self.safe_dict = {}
         for k in safe_list:
             self.safe_dict[k] = globals().get(k, None)
@@ -435,7 +448,7 @@ class TheoryAlgebraicExpression(QTheory):
     def handle_expressionChanged(self, item):
         """Handle a change in the algebraic expression"""
         self.set_param_value("expression", self.expressionCB.itemText(item))
-        
+
 
     def set_param_value(self, name, value):
         """Change a parameter value, in particular *n*
@@ -497,36 +510,50 @@ class TheoryAlgebraicExpression(QTheory):
         else:
             # Find FILE PARAMETERS IN THE EXPRESSION
             fparams = re.findall("\[(.*?)\]",expression)
+
+            # Build variable bindings
+            bindings = {'x': tt.data[:, 0]}
+            for i in range(n):
+                bindings['A%d' % i] = self.parameters["A%d" % i].value
+
+            # Process file parameters
             for fp in fparams:
                 if fp in f.file_parameters:
-                    self.safe_dict[fp]=float(f.file_parameters[fp])
+                    bindings[fp] = float(f.file_parameters[fp])
                 else:
                     self.logger.warning("File parameter not found. Review your theory")
                     self.Qprint("<b><font color=red>File parameter not found</font></b>. Review your theory")
-                    self.safe_dict[fp]=0.0
-            expression = expression.replace("[","").replace("]","")
+                    bindings[fp] = 0.0
 
-            self.safe_dict['x']=tt.data[:, 0]
-            for i in range(n):
-                self.safe_dict['A%d'%i]=self.parameters["A%d" % i].value
-            
+            # Remove brackets from expression for evaluation
+            clean_expression = expression.replace("[", "").replace("]", "")
+
             try:
-                y = eval(expression, {"__builtins__":None}, self.safe_dict)
+                if is_enabled('USE_SAFE_EVAL'):
+                    # Use secure AST-based evaluation (no eval/exec)
+                    y = safe_eval_array(clean_expression, bindings)
+                else:
+                    # Legacy eval-based evaluation (for backward compatibility)
+                    self.safe_dict.update(bindings)
+                    y = eval(clean_expression, {"__builtins__": None}, self.safe_dict)
+
                 for j in range(1, tt.num_columns):
                     tt.data[:, j] = y
+            except ValueError as e:
+                # safe_eval raises ValueError for disallowed operations
+                self.Qprint(f"<b>Error in algebraic expression: {e}</b>")
+                self.logger.exception("Error in Algebraic Expression (safe_eval)")
             except NameError as e:
-                self.Qprint("<b>Error in algebraic expression <b>")
+                self.Qprint("<b>Error in algebraic expression </b>")
                 self.logger.exception("Error in Algebraic Expression")
             except TypeError as e:
-                self.Qprint("<b>Error in algebraic expression <b>")
+                self.Qprint("<b>Error in algebraic expression </b>")
                 self.logger.exception("Error in Algebraic Expression")
             except Exception as e:
-                self.Qprint("<b>Error in algebraic expression <b>")
+                self.Qprint("<b>Error in algebraic expression </b>")
                 self.logger.exception("Error in Algebraic Expression")
-                #print (e.__class__, ":", e)
 
 
     def do_error(self, line):
         super().do_error(line)
         self.Qprint("%s: <b>%s</b>" % (self.thname, self.parameters["expression"].value))
-

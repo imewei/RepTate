@@ -41,7 +41,7 @@ from RepTate.gui.QTheory import QTheory, EndComputationRequested
 from PySide6.QtWidgets import QToolBar, QToolButton, QMenu, QSpinBox, QInputDialog
 from PySide6.QtCore import QSize
 from PySide6.QtGui import QIcon
-from RepTate.gui.Theory_rc import *
+import RepTate.gui.Theory_rc  # noqa: F401 - registers Qt resources
 from math import sqrt, exp, pow
 import time
 import RepTate.theories.sccr_ctypes_helper as sch

@@ -33,7 +33,7 @@
 """
 Define the C-variables and functions from the C-files that are needed in Python
 """
-from ctypes import *
+from ctypes import c_double, c_int
 import sys
 import os
 
