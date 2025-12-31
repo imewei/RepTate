@@ -80,13 +80,35 @@ class File(object):
         pass
 
     def mincol(self, col):
-        """Minimum value in data_table column col"""
+        """Minimum value in data_table column col
+
+        Args:
+            col: Index of the column to analyze.
+
+        Returns:
+            The minimum value found in the specified column of the data table.
+        """
         return self.data_table.mincol(col)
 
     def minpositivecol(self, col):
-        """Minimum positive value in data_table column col"""
+        """Minimum positive value in data_table column col
+
+        Args:
+            col: Index of the column to analyze.
+
+        Returns:
+            The minimum positive value found in the specified column of the data table.
+            Only values greater than zero are considered.
+        """
         return self.data_table.minpositivecol(col)
 
     def maxcol(self, col):
-        """Maximum value in data_table column col"""
+        """Maximum value in data_table column col
+
+        Args:
+            col: Index of the column to analyze.
+
+        Returns:
+            The maximum value found in the specified column of the data table.
+        """
         return self.data_table.maxcol(col)

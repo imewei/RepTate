@@ -16,6 +16,14 @@ class _SessionFilter(logging.Filter):
         self._session_id = session_id
 
     def filter(self, record: logging.LogRecord) -> bool:
+        """Attach session ID to log record.
+
+        Args:
+            record: Log record to filter
+
+        Returns:
+            Always True (all records pass through with session ID attached)
+        """
         record.session_id = self._session_id
         return True
 
@@ -39,6 +47,14 @@ def _log_dir_from_qt() -> Optional[Path]:
 
 
 def get_log_dir() -> Path:
+    """Determine and create the log directory.
+
+    Uses REPTATE_LOG_DIR environment variable if set, otherwise attempts
+    to use Qt's AppDataLocation, falling back to ~/.local/share/RepTate.
+
+    Returns:
+        Path to the log directory (created if it doesn't exist)
+    """
     env_dir = os.environ.get("REPTATE_LOG_DIR")
     if env_dir:
         path = Path(env_dir)
@@ -58,6 +74,33 @@ def setup_logging(
     enable_error_file: bool = True,
     force: bool = False,
 ) -> logging.Logger:
+    """Configure centralized logging for RepTate.
+
+    Sets up rotating file handlers for general and error logs, plus optional
+    console output. Respects environment variables for fine-grained control.
+
+    Environment Variables:
+        REPTATE_LOG_DIR: Override log directory location
+        REPTATE_LOG_CONSOLE_LEVEL: Console output level (default: WARNING)
+        REPTATE_LOG_FILE_LEVEL: File output level (default: INFO)
+        REPTATE_LOG_ERROR_LEVEL: Error file level (default: ERROR)
+        REPTATE_LOG_MAX_BYTES: Max bytes per log file (default: 2000000)
+        REPTATE_LOG_BACKUP_COUNT: Number of backup files (default: 5)
+        REPTATE_SESSION_ID: Session identifier (default: process PID)
+
+    Args:
+        name: Logger name (default: "RepTate")
+        level: Base logging level (default: INFO)
+        console_level: Console handler level (default: WARNING)
+        log_dir: Log directory (default: from get_log_dir())
+        enable_console: Enable console output handler
+        enable_file: Enable general file handler
+        enable_error_file: Enable error-specific file handler
+        force: Reconfigure even if already configured
+
+    Returns:
+        Configured logger instance
+    """
     global _CONFIGURED
     if _CONFIGURED and not force:
         return logging.getLogger(name)

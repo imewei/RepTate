@@ -135,7 +135,17 @@ class Parameter:
         )
 
     def copy(self, par2: Parameter) -> None:
-        """Copy the contents of another parameter"""
+        """Copy the contents of another parameter
+
+        Args:
+            par2: Source Parameter object whose attributes will be copied
+                  into this parameter instance.
+
+        Returns:
+            None. Modifies this parameter in place by copying all attributes
+            from par2, including name, description, type, value, optimization
+            type, and min/max bounds.
+        """
         self.name = par2.name
         self.description = par2.description
         self.type = par2.type

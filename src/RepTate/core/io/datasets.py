@@ -15,12 +15,44 @@ from RepTate.core.models import DatasetRecord
 
 @dataclass(frozen=True)
 class DatasetPayload:
+    """Container for dataset metadata and numerical data.
+
+    This immutable dataclass pairs a dataset record (containing metadata like
+    name, source location, and custom attributes) with the corresponding
+    numerical data array.
+
+    Attributes:
+        record: Dataset metadata including ID, name, source location, and
+            custom metadata dictionary.
+        data: Numerical array containing the dataset values. Expected to be
+            a 2D array where rows represent observations and columns represent
+            variables.
+    """
     record: DatasetRecord
     data: npt.NDArray[np.floating]
 
 
 def load_dataset(path: str | Path) -> DatasetPayload:
-    """Load a dataset from delimited text or JSON."""
+    """Load a dataset from delimited text or JSON.
+
+    Supported formats include CSV (comma-delimited), TSV (tab-delimited),
+    and JSON. For delimited formats, the entire file is parsed as numerical
+    data. For JSON format, the file must contain a dict with optional "name",
+    "data", and "metadata" keys.
+
+    Args:
+        path: Path to the dataset file. Supported extensions are .csv, .tsv,
+            and .json. The file extension determines the parsing strategy.
+
+    Returns:
+        DatasetPayload containing the parsed dataset record (with auto-generated
+        UUID, name derived from file stem, and source location) and the numerical
+        data array.
+
+    Raises:
+        ValueError: If the dataset contains non-finite values, is empty, or has
+            an unsupported file extension.
+    """
     source = Path(path)
     suffix = source.suffix.lower()
     dataset_id = str(uuid.uuid4())
@@ -52,7 +84,22 @@ def load_dataset(path: str | Path) -> DatasetPayload:
 
 
 def export_dataset(payload: DatasetPayload, path: str | Path, *, fmt: str) -> None:
-    """Export a dataset to delimited text or JSON."""
+    """Export a dataset to delimited text or JSON.
+
+    Writes the dataset to disk in the specified format. For delimited formats
+    (CSV, TSV), only the numerical data is written. For JSON format, the output
+    includes the dataset name, metadata dictionary, and data array.
+
+    Args:
+        payload: Dataset payload containing the record metadata and numerical
+            data to export.
+        path: Destination file path where the dataset will be written.
+        fmt: Output format specifier. Supported values are "csv", "tsv", and
+            "json" (case-insensitive).
+
+    Raises:
+        ValueError: If the format specifier is not supported.
+    """
     destination = Path(path)
     fmt_lower = fmt.lower()
 

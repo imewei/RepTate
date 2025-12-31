@@ -21,21 +21,84 @@ class ResultStore:
         self.posterior_dir.mkdir(exist_ok=True)
 
     def save_fit(self, record: FitResultRecord) -> Path:
+        """Save a deterministic fit result record to disk as JSON.
+
+        Persists the fit result to the fits subdirectory with a filename based
+        on the result_id. The record is serialized to JSON with sorted keys and
+        indentation for readability.
+
+        Args:
+            record: FitResultRecord containing fit parameters, metrics, and metadata.
+
+        Returns:
+            Path to the saved JSON file in the fits directory.
+
+        Raises:
+            OSError: If the file cannot be written due to permission or disk errors.
+        """
         path = self.fit_dir / f"{record.result_id}.json"
         _write_json(path, record.__dict__)
         return path
 
     def load_fit(self, result_id: str) -> FitResultRecord:
+        """Load a deterministic fit result record from disk.
+
+        Reads a previously saved fit result from the fits subdirectory and
+        reconstructs the FitResultRecord object from the JSON payload.
+
+        Args:
+            result_id: Unique identifier for the fit result to load.
+
+        Returns:
+            FitResultRecord reconstructed from the saved JSON data.
+
+        Raises:
+            FileNotFoundError: If no fit result exists with the given result_id.
+            json.JSONDecodeError: If the file contains invalid JSON.
+            TypeError: If the JSON structure does not match FitResultRecord fields.
+        """
         path = self.fit_dir / f"{result_id}.json"
         payload = _read_json(path)
         return FitResultRecord(**payload)
 
     def save_posterior(self, record: PosteriorResultRecord) -> Path:
+        """Save a Bayesian posterior result record to disk as JSON.
+
+        Persists the posterior result to the posteriors subdirectory with a
+        filename based on the result_id. The record is serialized to JSON with
+        sorted keys and indentation for readability.
+
+        Args:
+            record: PosteriorResultRecord containing posterior samples, diagnostics,
+                and metadata.
+
+        Returns:
+            Path to the saved JSON file in the posteriors directory.
+
+        Raises:
+            OSError: If the file cannot be written due to permission or disk errors.
+        """
         path = self.posterior_dir / f"{record.result_id}.json"
         _write_json(path, record.__dict__)
         return path
 
     def load_posterior(self, result_id: str) -> PosteriorResultRecord:
+        """Load a Bayesian posterior result record from disk.
+
+        Reads a previously saved posterior result from the posteriors subdirectory
+        and reconstructs the PosteriorResultRecord object from the JSON payload.
+
+        Args:
+            result_id: Unique identifier for the posterior result to load.
+
+        Returns:
+            PosteriorResultRecord reconstructed from the saved JSON data.
+
+        Raises:
+            FileNotFoundError: If no posterior result exists with the given result_id.
+            json.JSONDecodeError: If the file contains invalid JSON.
+            TypeError: If the JSON structure does not match PosteriorResultRecord fields.
+        """
         path = self.posterior_dir / f"{result_id}.json"
         payload = _read_json(path)
         return PosteriorResultRecord(**payload)

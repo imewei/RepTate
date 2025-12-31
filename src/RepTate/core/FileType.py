@@ -127,7 +127,14 @@ class TXTColumnFile(object):
         # self.logger = logging.getLogger('ReptateLogger')
 
     def is_number(self, s):
-        """Checks if the input string contains a number"""
+        """Checks if the input string contains a number
+
+        Args:
+            s: String to check for numeric content.
+
+        Returns:
+            True if the string can be converted to a float, False otherwise.
+        """
         try:
             float(s)
             return True
@@ -148,7 +155,17 @@ class TXTColumnFile(object):
                     file.file_parameters[par[0]] = par[1]
 
     def find_col_names_and_first_data_lines(self, lines, file):
-        """Find column names and first row with data"""
+        """Find column names and first row with data
+
+        Args:
+            lines: List of strings representing all lines read from the file.
+            file: File object where header lines will be stored.
+
+        Returns:
+            A tuple (colnameline, firstdata) where colnameline is the index
+            of the line containing column names (0 if not found), and firstdata
+            is the index of the first line containing numeric data.
+        """
         colnameline = 0
         firstdata = 0
         for i in range(1, len(lines)):
@@ -165,7 +182,17 @@ class TXTColumnFile(object):
         return colnameline, firstdata
 
     def read_file(self, filename, parent_dataset, axarr):
-        """Gets all the data from the file"""
+        """Gets all the data from the file
+
+        Args:
+            filename: Path to the text file to read.
+            parent_dataset: Dataset object that will contain this file.
+            axarr: Array of matplotlib Axes objects for plotting the data.
+
+        Returns:
+            A File object populated with data from the text file, including
+            file parameters, header lines, and numeric data arranged in columns.
+        """
         if not os.path.isfile(filename):
             print('File "%s" does not exists' % f)
             return
@@ -236,7 +263,18 @@ class ExcelFile(object):
         # self.logger = logging.getLogger('ReptateLogger')
 
     def read_file(self, filename, parent_dataset, axarr):
-        """Read Excel File"""
+        """Read Excel File
+
+        Args:
+            filename: Path to the Excel file to read.
+            parent_dataset: Dataset object that will contain this file.
+            axarr: Array of matplotlib Axes objects for plotting the data.
+
+        Returns:
+            A File object populated with data from the Excel file. The method
+            interactively prompts the user to select the worksheet and specify
+            which columns contain the required data.
+        """
         if not os.path.isfile(filename):
             print('File "%s" does not exists' % f)
             return

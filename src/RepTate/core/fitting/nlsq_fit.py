@@ -13,6 +13,22 @@ from RepTate.core.io.datasets import DatasetPayload, export_dataset
 
 @dataclass(frozen=True)
 class FitResult:
+    """Deterministic nonlinear least-squares fit result.
+
+    Contains parameter estimates, covariance matrix, residuals, and warm-start
+    values for subsequent optimization or Bayesian inference.
+
+    Attributes:
+        parameters: Dictionary mapping parameter names (p0, p1, ...) to their
+            fitted values.
+        parameters_array: JAX array of fitted parameter values in sequential order.
+        covariance: Parameter covariance matrix estimated from the Jacobian at
+            the optimal point. Shape (n_params, n_params).
+        residuals: List of residual values (ydata - model predictions) at the
+            optimal parameter values.
+        warm_start: Dictionary of parameter values suitable for warm-starting
+            subsequent fits or MCMC chains. Same as parameters.
+    """
     parameters: dict[str, float]
     parameters_array: jnp.ndarray
     covariance: jnp.ndarray
@@ -22,10 +38,25 @@ class FitResult:
 
 @dataclass(frozen=True)
 class FitDiagnostics:
+    """Diagnostic information from a deterministic fit.
+
+    Captures convergence status and function evaluation count for monitoring
+    fit quality and computational cost.
+
+    Attributes:
+        nfev: Number of function evaluations performed during optimization.
+            May be None if not tracked by the optimizer.
+        status: Convergence status string (e.g., "success", "max_iter_reached").
+    """
     nfev: int | None
     status: str
 
     def as_dict(self) -> dict[str, object]:
+        """Convert diagnostics to a dictionary for serialization.
+
+        Returns:
+            dict[str, object]: Dictionary with keys "nfev" and "status".
+        """
         return {"nfev": self.nfev, "status": self.status}
 
 
@@ -37,10 +68,42 @@ def run_nlsq_fit(
     p0: jnp.ndarray | None = None,
     bounds: tuple[float, float] = (-jnp.inf, jnp.inf),
 ) -> tuple[FitResult, FitDiagnostics]:
+    """Execute deterministic nonlinear least-squares fit using NLSQ.
+
+    Fits a nonlinear model to data by minimizing the sum of squared residuals.
+    Uses the NLSQ library for automatic differentiation and trust-region optimization.
+
+    Args:
+        model_fn: Callable taking (xdata, parameters) and returning model predictions.
+            Both inputs and output should be JAX arrays.
+        xdata: Independent variable data. Shape (n_points,) or (n_points, n_features).
+        ydata: Dependent variable data to fit. Shape (n_points,).
+        p0: Initial parameter guess. If None, NLSQ will use zeros or heuristics.
+        bounds: Parameter bounds as (lower, upper). Can be scalars (applied to all
+            parameters) or arrays matching parameter shape. Default is unbounded.
+
+    Returns:
+        tuple[FitResult, FitDiagnostics]: A tuple containing:
+            - FitResult with parameter estimates, covariance, and residuals
+            - FitDiagnostics with convergence status
+
+    Raises:
+        ValueError: If ydata contains more than 1,000,000 points (too large for
+            in-memory deterministic fitting).
+    """
     if ydata.size > 1_000_000:
         raise ValueError("Dataset too large for deterministic fitting in-memory.")
 
     def curve_model(x, *params):
+        """Adapter function to unpack variadic parameters for curve_fit.
+
+        Args:
+            x: Independent variable array.
+            *params: Unpacked parameter values.
+
+        Returns:
+            jnp.ndarray: Model predictions at x with given parameters.
+        """
         return model_fn(x, jnp.asarray(params))
 
     popt, pcov = curve_fit(curve_model, xdata, ydata, p0=p0, bounds=bounds)
@@ -60,5 +123,19 @@ def run_nlsq_fit(
 def export_fit_inputs(
     payload: DatasetPayload, destination: str, *, fmt: str = "json"
 ) -> None:
-    """Export dataset inputs used for fitting."""
+    """Export dataset inputs used for fitting to disk.
+
+    Saves the dataset payload (data and metadata) to a file for archival,
+    reproducibility, or sharing. Delegates to the core export_dataset function.
+
+    Args:
+        payload: DatasetPayload containing the dataset record and numerical data
+            to export.
+        destination: File path where the dataset should be written. The file
+            extension is ignored; format is determined by the fmt parameter.
+        fmt: Output format. Supported values are "json" (default), "csv", or "tsv".
+
+    Raises:
+        ValueError: If fmt is not a supported format.
+    """
     export_dataset(payload, destination, fmt=fmt)

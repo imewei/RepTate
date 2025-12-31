@@ -120,7 +120,11 @@ class CircuitBreaker:
 
     @property
     def state(self) -> CircuitState:
-        """Get the current state of the circuit breaker."""
+        """Get the current state of the circuit breaker.
+
+        Returns:
+            Current CircuitState (CLOSED, OPEN, or HALF_OPEN)
+        """
         with self._lock:
             return self._state
 
@@ -313,8 +317,25 @@ class CircuitBreaker:
                 return x * 2
         """
         def decorator(func: Callable[..., T]) -> Callable[..., T]:
+            """Inner decorator that wraps the target function.
+
+            Args:
+                func: Function to protect with circuit breaker
+
+            Returns:
+                Wrapped function with circuit breaker protection
+            """
             @functools.wraps(func)
             def wrapper(*args: Any, **kwargs: Any) -> T:
+                """Execute function with circuit breaker protection.
+
+                Args:
+                    *args: Positional arguments for the wrapped function
+                    **kwargs: Keyword arguments for the wrapped function
+
+                Returns:
+                    Result from the function or fallback
+                """
                 return self.call(func, fallback, *args, **kwargs)
             return wrapper
         return decorator

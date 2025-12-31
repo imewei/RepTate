@@ -117,6 +117,23 @@ class MultiView(QWidget):
         mpl.rcParams["savefig.dpi"] = self.SAVE_DPI
 
     def setupUi(self):
+        """Initialize and configure the user interface components.
+
+        Sets up matplotlib styling, creates the tab widget for plot selection,
+        configures the plot container layout, initializes the figure with gridspec,
+        and creates the matplotlib canvas. Applies custom styling to remove top
+        and right spines from all axes.
+
+        The method configures:
+            - Matplotlib rcParams for consistent plot styling
+            - QTabWidget for switching between individual plots and multi-plot view
+            - Vertical layout container for the matplotlib canvas
+            - GridSpec layouts for both multi-plot and maximized single-plot views
+            - Individual subplot axes stored in self.axarr
+
+        Returns:
+            None
+        """
         # Remove seaborn dependency
         dark_gray = ".15"
         light_gray = ".8"
@@ -234,6 +251,25 @@ class MultiView(QWidget):
         self.hidden_tab = []
 
     def set_bbox(self):
+        """Calculate and store bounding boxes for all subplot axes.
+
+        Iterates through all subplot axes to determine their positions and calculates
+        the overall bounding box that encompasses all plots. Stores individual bbox
+        for each subplot in self.bbox and the maximum encompassing bbox in self.bboxmax.
+
+        The bboxmax is a list [x0, y0, width, height] where:
+            - x0: Minimum x position across all subplots
+            - y0: Minimum y position across all subplots
+            - width: Total width from leftmost to rightmost subplot
+            - height: Total height from bottom to top subplot
+
+        Returns:
+            None
+
+        Note:
+            Sets self.bbox (list of matplotlib.transforms.Bbox objects) and
+            self.bboxmax (list of 4 floats representing the encompassing rectangle).
+        """
         self.bbox = []
         x0min = y0min = 1e9
         x1max = y1max = -1e9
@@ -300,6 +336,24 @@ class MultiView(QWidget):
         self.plotselecttabWidget.blockSignals(False)
 
     def init_plot(self, index):
+        """Initialize plot layout based on the selected tab index.
+
+        Configures subplot visibility and positioning depending on whether the
+        multi-plot view (index 0) or a single maximized plot view (index > 0)
+        is selected. Updates the parent application's current view tab and
+        redraws the canvas.
+
+        Args:
+            index: The tab index to initialize.
+                - 0: Show all plots in multi-plot layout using GridSpec positions
+                - 1+: Maximize the plot at position (index-1), hide all others
+
+        Returns:
+            None
+
+        Note:
+            Sets self.parent_application.current_viewtab and triggers canvas redraw.
+        """
         if index == 0:  # multiplots
             for i in range(self.nplots):
                 # self.axarr[i].set_position(self.bbox[i])
@@ -318,6 +372,26 @@ class MultiView(QWidget):
         self.canvas.draw()
 
     def handle_plottabChanged(self, index):
+        """Handle tab change events to switch between multi-plot and single-plot views.
+
+        Updates the view layout when the user switches tabs, synchronizing the view
+        ComboBox in the parent application and adjusting subplot visibility and
+        positioning accordingly. For multi-plot view (index 0), all subplots are
+        shown. For single-plot view (index > 0), only the selected plot is maximized.
+
+        Args:
+            index: The new tab index after the change.
+                - 0: Multi-plot view showing all subplots
+                - 1+: Single-plot maximized view for plot at position (index-1)
+
+        Returns:
+            None
+
+        Note:
+            This method is connected to the plotselecttabWidget.currentChanged signal.
+            It updates parent_application.current_viewtab, synchronizes the viewComboBox,
+            adjusts subplot positions and visibility, and calls set_view_tools().
+        """
         self.parent_application.current_viewtab = index
         if index == 0:  # multiplots
             view_name = self.parent_application.multiviews[0].name
@@ -395,6 +469,25 @@ class MultiView(QWidget):
     #     return gs
 
     def organizeOptimalRow(self, nplots, ncols):
+        """Organize plots in an optimal row layout with emphasis on the first plot.
+
+        Creates a GridSpec layout where plots are arranged in a grid with the
+        specified number of columns. The first plot occupies extra space in the
+        first row if there are fewer plots than grid cells, giving it visual prominence.
+
+        Args:
+            nplots: Total number of plots to arrange.
+            ncols: Number of columns in the grid layout.
+
+        Returns:
+            list: A list of GridSpec subplot specifications, one for each plot.
+                The first element may span multiple columns if nplots < row * ncols.
+
+        Example:
+            For nplots=5, ncols=3:
+                Row 1: [Plot 0 spanning 2 cols][Plot 1][Plot 2]
+                Row 2: [Plot 3][Plot 4][empty]
+        """
         row = math.ceil(nplots / ncols)
         gstmp = gridspec.GridSpec(
             row,
@@ -418,6 +511,27 @@ class MultiView(QWidget):
         return gs
 
     def update_plot_organization(self, left, bottom, ws, hs):
+        """Update the plot layout organization with custom spacing parameters.
+
+        Recreates the optimal row GridSpec layout using the current number of plots
+        and columns, but with custom left margin, bottom margin, and spacing parameters.
+        This allows dynamic adjustment of plot positioning and spacing without changing
+        the overall organization pattern.
+
+        Args:
+            left: Left margin of the GridSpec (fraction of figure width, 0-1).
+            bottom: Bottom margin of the GridSpec (fraction of figure height, 0-1).
+            ws: Horizontal spacing (wspace) between subplots (fraction of subplot width).
+            hs: Vertical spacing (hspace) between subplots (fraction of subplot height).
+
+        Returns:
+            list: A list of GridSpec subplot specifications with updated spacing,
+                one for each plot in the current layout.
+
+        Note:
+            Uses self.nplots and self.ncols from the instance. Keeps RIGHT and TOP
+            margins unchanged from class constants.
+        """
         row = math.ceil(self.nplots / self.ncols)
         gstmp = gridspec.GridSpec(
             row,
@@ -464,6 +578,31 @@ class MultiView(QWidget):
     #     return gs
 
     def organizeplots(self, organizationtype, nplots=1, ncols=1, gs=None):
+        """Organize multiple plots according to the specified layout type.
+
+        Dispatches to the appropriate layout organization method based on the
+        PlotOrganizationType. Currently supports Vertical, Horizontal, OptimalRow,
+        OptimalColumn, Specified, and DefaultOrganization layout types.
+
+        Args:
+            organizationtype: A PlotOrganizationType enum value specifying how to
+                arrange the plots (Vertical, Horizontal, OptimalRow, OptimalColumn,
+                Specified, or DefaultOrganization).
+            nplots: Number of plots to organize. Defaults to 1.
+            ncols: Number of columns for grid-based layouts (OptimalRow, OptimalColumn).
+                Defaults to 1. Ignored for Vertical and Horizontal layouts.
+            gs: Custom GridSpec for PlotOrganizationType.Specified. Defaults to None.
+                Not currently utilized in the implementation.
+
+        Returns:
+            GridSpec or list: The GridSpec layout object or list of subplot specifications
+                depending on the organization type. Returns None for Specified and
+                DefaultOrganization types (not fully implemented).
+
+        Note:
+            The Specified and DefaultOrganization types have placeholder implementations
+            and do not return a value.
+        """
         if organizationtype == PlotOrganizationType.Vertical:
             return self.organizeVertical(nplots)
         elif organizationtype == PlotOrganizationType.Horizontal:

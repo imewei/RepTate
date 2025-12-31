@@ -25,9 +25,27 @@ class ComputeService:
         self._store = ResultStore(result_dir)
 
     def list_models(self) -> list[dict[str, Any]]:
+        """List all available theoretical models registered in the system.
+
+        Returns:
+            list[dict[str, Any]]: List of model specification dictionaries containing
+                model metadata (e.g., model_id, name, parameters, description) from the
+                internal model registry. Each dictionary represents a serialized
+                ModelSpec instance.
+        """
         return [asdict(spec) for spec in self._registry.list_models()]
 
     def import_dataset(self, path: str | Path) -> DatasetPayload:
+        """Load experimental data from a CSV file.
+
+        Args:
+            path (str | Path): Filesystem path to the CSV file containing experimental
+                data. Expected format is determined by the dataset_io module.
+
+        Returns:
+            DatasetPayload: Structured dataset containing x-values, y-values, and
+                metadata extracted from the CSV file.
+        """
         return load_csv_dataset(path)
 
     def run_fit(
@@ -42,6 +60,26 @@ class ComputeService:
         dataset_id: str,
         model_id: str,
     ) -> FitResultRecord:
+        """Execute nonlinear least-squares fitting on experimental data.
+
+        Args:
+            model_fn (Callable[[jnp.ndarray, jnp.ndarray], jnp.ndarray]): Model function
+                mapping (parameters, xdata) to predicted ydata.
+            xdata (jnp.ndarray): Independent variable values from experimental data.
+            ydata (jnp.ndarray): Dependent variable values to fit.
+            p0 (jnp.ndarray | None): Initial parameter guess. If None, uses model
+                defaults or random initialization.
+            bounds (tuple[float, float]): Parameter bounds as (lower, upper) tuple.
+                Defaults to unbounded optimization.
+            result_id (str): Unique identifier for this fit result.
+            dataset_id (str): Reference to the source dataset.
+            model_id (str): Reference to the theoretical model being fit.
+
+        Returns:
+            FitResultRecord: Complete fit result including optimized parameters,
+                residuals, diagnostics (convergence status, covariance, etc.), and
+                execution metadata. Result is persisted to disk via ResultStore.
+        """
         warn_if_no_accelerator()
         fit_result, diagnostics = run_nlsq_fit(
             model_fn,
@@ -73,6 +111,26 @@ class ComputeService:
         num_warmup: int = 1000,
         num_samples: int = 1000,
     ) -> PosteriorResultRecord:
+        """Execute Bayesian inference using NUTS sampling.
+
+        Args:
+            model (Callable[..., Any]): NumPyro probabilistic model defining priors and
+                likelihood function.
+            fit_record (FitResultRecord): Previous fit result providing initialization
+                and data context for inference.
+            result_id (str): Unique identifier for this inference result.
+            rng_seed (int): Random number generator seed for reproducibility. Defaults
+                to 0.
+            num_warmup (int): Number of NUTS warmup iterations for sampler adaptation.
+                Defaults to 1000.
+            num_samples (int): Number of posterior samples to draw after warmup.
+                Defaults to 1000.
+
+        Returns:
+            PosteriorResultRecord: Posterior samples, diagnostics (ESS, Rhat,
+                divergences, tree depth), and metadata. Result is persisted to disk
+                via ResultStore.
+        """
         warn_if_no_accelerator()
         record = run_nuts_inference(
             model,
@@ -86,6 +144,15 @@ class ComputeService:
         return record
 
     def resume_inference(self, result_id: str) -> PosteriorResultRecord:
+        """Load a previously computed inference result from disk.
+
+        Args:
+            result_id (str): Unique identifier of the posterior result to retrieve.
+
+        Returns:
+            PosteriorResultRecord: Previously computed posterior samples and diagnostics
+                loaded from persistent storage.
+        """
         return self._store.load_posterior(result_id)
 
 

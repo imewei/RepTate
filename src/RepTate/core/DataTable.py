@@ -86,14 +86,35 @@ class DataTable:
         """Minimum value in table column col
 
         .. todo:: Example **todo** in the code
+
+        Args:
+            col: Index of the column to analyze.
+
+        Returns:
+            The minimum value found in the specified column.
         """
         return np.min(self.data[:, col])
 
     def minpositivecol(self, col: int) -> np.floating[Any]:
-        """Minimum positive value in table column col"""
+        """Minimum positive value in table column col
+
+        Args:
+            col: Index of the column to analyze.
+
+        Returns:
+            The minimum positive value found in the specified column.
+            Only values greater than zero are considered.
+        """
         return (self.data[self.data[:, col] > 0, col]).min()
 
     def maxcol(self, col: int) -> np.floating[Any]:
-        """Maximum value in table column col"""
+        """Maximum value in table column col
+
+        Args:
+            col: Index of the column to analyze.
+
+        Returns:
+            The maximum value found in the specified column.
+        """
         return np.max(self.data[:, col])
         

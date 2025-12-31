@@ -107,6 +107,15 @@ class MigrationDecorator:
         """
         @functools.wraps(new_impl)
         def wrapper(*args: Any, **kwargs: Any) -> T:
+            """Execute migration with feature flag, circuit breaker, and validation.
+
+            Args:
+                *args: Positional arguments for the implementation
+                **kwargs: Keyword arguments for the implementation
+
+            Returns:
+                Result from new implementation or legacy fallback
+            """
             import time
 
             start_time = time.perf_counter()
@@ -297,6 +306,15 @@ def create_gradual_rollout(
 
     @functools.wraps(new_impl)
     def wrapper(*args: Any, **kwargs: Any) -> T:
+        """Execute gradual rollout based on feature flag percentage.
+
+        Args:
+            *args: Positional arguments for the implementation
+            **kwargs: Keyword arguments for the implementation (special: _migration_user_id)
+
+        Returns:
+            Result from new implementation or legacy based on rollout percentage
+        """
         # Check if user is in rollout
         user_id = kwargs.pop('_migration_user_id', None)
 

@@ -112,7 +112,15 @@ class DraggableArtist(object):
 
 
     def modify_artist(self, dx, dy):
-        """Do nothing"""
+        """Modify the artist's position or properties.
+
+        Base implementation does nothing. Subclasses override this method
+        to implement specific artist modification behavior during drag operations.
+
+        Args:
+            dx (float): Horizontal displacement in data coordinates.
+            dy (float): Vertical displacement in data coordinates.
+        """
         pass
 
     def get_data(self):
@@ -223,11 +231,22 @@ class DraggableBinSeries(DraggableArtist):
         canvas.update()
 
     def modify_artist(self, dx, dy):
-        """Change artist coords"""
+        """Update histogram bin position during drag.
+
+        Modifies the x-coordinate of the selected bin based on displacement,
+        respecting logarithmic scaling if enabled. Updates the artist's data
+        to reflect the new position.
+
+        Args:
+            dx (float): Horizontal displacement. In linear scale, this is a direct
+                offset. In log scale, this is a logarithmic displacement (log10).
+            dy (float): Vertical displacement. In linear scale, this is a direct
+                offset. In log scale, this is a logarithmic displacement (log10).
+        """
         xdata = self.xdata_at_press
         ydata = self.ydata_at_press
-        xdataind = xdata[self.index] 
-        ydataind = ydata[self.index] 
+        xdataind = xdata[self.index]
+        ydataind = ydata[self.index]
         nmodes = len(self.xdata)
         if self.logx:
             newx = self.xpress*np.power(10, dx)
@@ -237,7 +256,7 @@ class DraggableBinSeries(DraggableArtist):
             newy = self.ypress*np.power(10, dy)
         else:
             newy = self.ypress + dy
-            
+
         newxdata=xdata
         newydata=ydata
         # if self.index==0:
@@ -253,7 +272,7 @@ class DraggableBinSeries(DraggableArtist):
         # else:
         newxdata[self.index] = newx
         # newydata[self.index] = newy
-            
+
 
         self.artist.set_data(newxdata, newydata)
 
@@ -306,6 +325,12 @@ class DraggableModesSeries(DraggableArtist):
         self.update_logx_logy()
     
     def update_logx_logy(self):
+        """Update logarithmic scale flags from parent application view.
+
+        Synchronizes the logx and logy attributes with the current view's
+        logarithmic scale settings. This ensures drag operations correctly
+        handle coordinate transformations in log-scaled plots.
+        """
         self.logx = self.parent_application.current_view.log_x
         self.logy = self.parent_application.current_view.log_y
 
@@ -366,11 +391,24 @@ class DraggableModesSeries(DraggableArtist):
         canvas.update()
 
     def modify_artist(self, dx, dy):
-        """Modify artist coords"""
+        """Update mode series coordinates during drag.
+
+        Modifies the selected point's coordinates with special handling for
+        boundary modes (first and last). When dragging the first or last mode,
+        all x-coordinates are redistributed linearly or logarithmically between
+        the new position and the opposite boundary. Y-coordinates of the selected
+        mode are always updated.
+
+        Args:
+            dx (float): Horizontal displacement. In linear scale, this is a direct
+                offset. In log scale, this is a logarithmic displacement (log10).
+            dy (float): Vertical displacement. In linear scale, this is a direct
+                offset. In log scale, this is a logarithmic displacement (log10).
+        """
         xdata = self.xdata_at_press
         ydata = self.ydata_at_press
-        xdataind = xdata[self.index] 
-        ydataind = ydata[self.index] 
+        xdataind = xdata[self.index]
+        ydataind = ydata[self.index]
         nmodes = len(self.xdata)
         self.update_logx_logy()
         if self.logx:
@@ -381,7 +419,7 @@ class DraggableModesSeries(DraggableArtist):
             newy = self.ypress*np.power(10, dy)
         else:
             newy = self.ypress + dy
-            
+
         newxdata=xdata
         newydata=ydata
         if self.index==0:
@@ -393,10 +431,10 @@ class DraggableModesSeries(DraggableArtist):
         elif self.index==nmodes-1:
             if self.logy:
                 newxdata = np.power(10, np.linspace(np.log10(newxdata[0]), np.log10(newx), nmodes))
-            else:    
+            else:
                 newxdata = np.linspace(newxdata[0], newx, nmodes)
             newxdata=newxdata.reshape(nmodes,1)
-        
+
         newydata[self.index] = newy
 
         self.artist.set_data(newxdata, newydata)
@@ -526,7 +564,20 @@ class DraggableSeries(DraggableArtist):
         canvas.update()
 
     def modify_artist(self, dx, dy):
-        """Modify artist coords"""
+        """Update entire series coordinates during drag.
+
+        Applies the displacement to all points in the series, respecting
+        logarithmic scaling if enabled. This allows the entire data series
+        to be shifted uniformly in x, y, or both directions.
+
+        Args:
+            dx (float): Horizontal displacement. In linear scale, this is a direct
+                offset added to all x-coordinates. In log scale, this is a logarithmic
+                displacement (log10) used as a multiplicative factor.
+            dy (float): Vertical displacement. In linear scale, this is a direct
+                offset added to all y-coordinates. In log scale, this is a logarithmic
+                displacement (log10) used as a multiplicative factor.
+        """
         if self.logx:
             newx = [x*np.power(10, dx) for x in self.data[0]]
         else:
@@ -578,7 +629,15 @@ class DraggablePatch(DraggableArtist):
         self.data=self.artist.center
 
     def modify_artist(self, dx, dy):
-        """Modify artist coords"""
+        """Update patch center position during drag.
+
+        Translates the patch by adjusting its center coordinates based on
+        the provided displacement values.
+
+        Args:
+            dx (float): Horizontal displacement in data coordinates.
+            dy (float): Vertical displacement in data coordinates.
+        """
         self.artist.center = (self.data[0]+dx, self.data[1]+dy)
 
 class DraggableRectangle(DraggableArtist):
@@ -592,7 +651,15 @@ class DraggableRectangle(DraggableArtist):
         self.data=self.artist.xy
 
     def modify_artist(self, dx, dy):
-        """Modify the artist coords"""
+        """Update rectangle position during drag.
+
+        Translates the rectangle by adjusting its bottom-left corner (xy)
+        coordinates based on the provided displacement values.
+
+        Args:
+            dx (float): Horizontal displacement in data coordinates.
+            dy (float): Vertical displacement in data coordinates.
+        """
         self.artist.set_x(self.data[0]+dx)
         self.artist.set_y(self.data[1]+dy)
 
@@ -626,7 +693,15 @@ class DraggableVLine(DraggableArtist):
         self.data = self.artist.get_data()
 
     def modify_artist(self, dx, dy):
-        """Modify the artist coordinates"""
+        """Update vertical line position during drag.
+
+        Shifts the vertical line horizontally by the displacement. The vertical
+        extent remains unchanged (normalized to [0, 1] in axes coordinates).
+
+        Args:
+            dx (float): Horizontal displacement in data coordinates.
+            dy (float): Vertical displacement in data coordinates (ignored for vertical lines).
+        """
         self.artist.set_data([self.data[0][0] + dx, self.data[0][1] + dx], [0, 1])
 
 
@@ -660,7 +735,15 @@ class DraggableHLine(DraggableArtist):
         self.data = self.artist.get_data()
 
     def modify_artist(self, dx, dy):
-        """Modify the artist coordinates"""
+        """Update horizontal line position during drag.
+
+        Shifts the horizontal line vertically by the displacement. The horizontal
+        extent remains unchanged (normalized to [0, 1] in axes coordinates).
+
+        Args:
+            dx (float): Horizontal displacement in data coordinates (ignored for horizontal lines).
+            dy (float): Vertical displacement in data coordinates.
+        """
         self.artist.set_data([0, 1], [self.data[1][0] + dy, self.data[1][1] + dy])
 
 class DraggableVSpan(DraggableArtist):
@@ -674,7 +757,16 @@ class DraggableVSpan(DraggableArtist):
         self.data=self.artist.get_xy()
 
     def modify_artist(self, dx, dy):
-        """Modify the artist coordinates"""
+        """Update vertical span position during drag.
+
+        Shifts the vertical span horizontally by the displacement while
+        preserving its width. The vertical extent remains unchanged
+        (normalized to [0, 1] in axes coordinates).
+
+        Args:
+            dx (float): Horizontal displacement in data coordinates.
+            dy (float): Vertical displacement in data coordinates (ignored for vertical spans).
+        """
         xmin = self.data[0][0]
         xmax = self.data[2][0]
         self.artist.set_xy([[xmin+dx,0],[xmin+dx,1],[xmax+dx,1],[xmax+dx,0],[xmin+dx,0]])
@@ -690,7 +782,16 @@ class DraggableHSpan(DraggableArtist):
         self.data=self.artist.get_xy()
 
     def modify_artist(self, dx, dy):
-        """Modify the artist data"""
+        """Update horizontal span position during drag.
+
+        Shifts the horizontal span vertically by the displacement while
+        preserving its height. The horizontal extent remains unchanged
+        (normalized to [0, 1] in axes coordinates).
+
+        Args:
+            dx (float): Horizontal displacement in data coordinates (ignored for horizontal spans).
+            dy (float): Vertical displacement in data coordinates.
+        """
         ymin = self.data[0][1]
         ymax = self.data[1][1]
         self.artist.set_xy([[0, ymin+dy], [0, ymax+dy], [1, ymax+dy], [1 ,ymin+dy], [0, ymin+dy]])
@@ -708,7 +809,16 @@ class DraggableNote(DraggableArtist):
         self.data=self.artist.get_position()
 
     def modify_artist(self, dx, dy):
-        """Modify the artist position"""
+        """Update annotation box position during drag.
+
+        Relocates the annotation by setting its position based on the original
+        press coordinates plus the displacement. This allows free movement of
+        the annotation box across the plot.
+
+        Args:
+            dx (float): Horizontal displacement in data coordinates.
+            dy (float): Vertical displacement in data coordinates.
+        """
         self.artist.set_position([self.press[0]+dx, self.press[1]+dy])
 
     def on_press(self, event):

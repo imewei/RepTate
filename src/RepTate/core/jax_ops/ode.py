@@ -12,7 +12,25 @@ def rk4_integrate(
     t: Sequence[float],
     args: Optional[Sequence[float]] = None,
 ) -> np.ndarray:
-    """Deterministic RK4 integrator for fixed time grids."""
+    """Deterministic RK4 integrator for fixed time grids.
+
+    Implements the fourth-order Runge-Kutta method for solving ordinary
+    differential equations dy/dt = deriv(y, t, args) on a fixed time grid.
+
+    Args:
+        deriv: Derivative function with signature f(y, t) or f(y, t, args)
+            that returns dy/dt. Must return a sequence of floats representing
+            the time derivatives of the state variables.
+        y0: Initial conditions. Can be a scalar for 1D systems or a sequence
+            for multi-dimensional systems.
+        t: Time points for integration. Must be a monotonically increasing
+            sequence defining the output time grid.
+        args: Optional constant parameters passed to the derivative function.
+
+    Returns:
+        np.ndarray: Solution array with shape (len(t), len(y0)), where each
+            row contains the state vector at the corresponding time point.
+    """
     y = np.atleast_1d(np.asarray(y0, dtype=float))
     t_arr = np.asarray(t, dtype=float)
     ys = np.zeros((len(t_arr), y.size), dtype=float)
