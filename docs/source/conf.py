@@ -72,9 +72,13 @@ author = "Jorge Ramirez, Victor Boudara"
 # built documents.
 #
 # The short X.Y version.
-verdata = RepTate._version.get_versions()
-version = verdata["version"].split("+")[0]
-date = verdata["date"].split("T")[0]
+try:
+    verdata = RepTate._version.get_versions()
+    version = verdata["version"].split("+")[0]
+    date = verdata["date"].split("T")[0]
+except AttributeError:
+    version = RepTate.__version__
+    date = "2024"
 # The full version, including alpha/beta/rc tags.
 release = version + " " + date
 

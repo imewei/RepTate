@@ -125,3 +125,39 @@ tag_regex = "^v(?P<version>\\d+\\.\\d+\\.\\d+)$"
 python_version = "3.12"
 warn_unused_ignores = true
 ignore_missing_imports = true
+
+# Pytest Configuration
+# ====================
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+
+# Markers for test categorization
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests requiring external resources",
+    "regression: marks tests as regression tests validating numerical equivalence",
+    "characterization: marks tests as characterization tests documenting existing behavior",
+    "gui: marks tests requiring GUI/Qt (requires pytest-qt)",
+    "jax: marks tests specifically testing JAX functionality",
+]
+
+# Default options
+addopts = [
+    "-ra",                      # Show extra summary for all except passed
+    "--strict-markers",         # Fail on unknown markers
+    "--strict-config",          # Fail on config errors
+    "-v",                       # Verbose output
+]
+
+# Filter warnings during tests
+filterwarnings = [
+    "ignore::DeprecationWarning:jax.*",
+    "ignore::PendingDeprecationWarning",
+]
+
+# Timeout for individual tests (requires pytest-timeout plugin)
+# timeout = 60

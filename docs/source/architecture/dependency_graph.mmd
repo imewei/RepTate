@@ -1,0 +1,351 @@
+```mermaid
+graph TB
+    %% RepTate Architecture Dependency Graph
+    %% Generated: 2025-12-30
+
+    %% External Dependencies
+    subgraph External["External Libraries"]
+        numpy["numpy ≥2.2.0"]
+        jax["JAX ≥0.8.0"]
+        nlsq["NLSQ ≥0.4.1"]
+        pyside6["PySide6 ≥6.6.0"]
+        matplotlib["matplotlib ≥3.9.0"]
+        numpyro["NumPyro ≥0.14.0"]
+    end
+
+    %% Core Module
+    subgraph Core["core/ - Foundation Layer"]
+        cmdbase["CmdBase<br/>(CalcMode enum)"]
+        param["Parameter<br/>(data model)"]
+        view["View<br/>(view model)"]
+        datatable["DataTable<br/>(⚠️ matplotlib!)"]
+        file["File<br/>(data container)"]
+        filetype["FileType<br/>(file readers)"]
+        interfaces["interfaces.py<br/>(✅ Protocols)"]
+        serialization["serialization.py<br/>(✅ Safe JSON+NPZ)"]
+        safe_eval["safe_eval.py<br/>(✅ Secure eval)"]
+        multiview["MultiView<br/>(❌ Qt in core!)"]
+    end
+
+    %% Fitting Module
+    subgraph Fitting["core/fitting/ - Numerical Engine"]
+        nlsq_fit["nlsq_fit.py"]
+        nlsq_optimize["nlsq_optimize.py"]
+        model_api["model_api.py"]
+    end
+
+    %% GUI Module
+    subgraph GUI["gui/ - Presentation Layer"]
+        qappmanager["QApplicationManager<br/>(main window)"]
+        qappwindow["QApplicationWindow<br/>(app container)"]
+        qdataset["QDataSet<br/>(dataset widget)"]
+        qtheory["QTheory<br/>(⚠️ GOD CLASS!)"]
+        qtool["QTool<br/>(tool widget)"]
+    end
+
+    %% Controllers (NEW - MVC pattern)
+    subgraph Controllers["gui/controllers/ - Business Logic"]
+        fit_controller["fit_controller.py<br/>(✅ No Qt!)"]
+        inference_controller["inference_controller.py<br/>(✅ No Qt!)"]
+        export_controller["export_controller.py"]
+    end
+
+    %% Views (NEW - MVC pattern)
+    subgraph Views["gui/views/ - View Components"]
+        summary_view["summary_view.py"]
+        fit_view["fit_view.py"]
+        inference_view["inference_view.py"]
+        plot_views["plot_views.py"]
+    end
+
+    %% Theories Module
+    subgraph Theories["theories/ - Scientific Models"]
+        theory_basic["TheoryBasic<br/>(❌ inherits QTheory!)"]
+        maxwell["TheoryMaxwellModes"]
+        roliepoly["TheoryRoliePoly<br/>(✅ JAX ODE)"]
+        bob["TheoryBobLVE<br/>(ctypes → C)"]
+        likhtman["TheoryLikhtmanMcLeish"]
+    end
+
+    %% Ctypes Helpers
+    subgraph CTypes["theories/*_ctypes_helper - C Integration"]
+        bob_helper["BobCtypesHelper"]
+        react_helper["react_ctypes_helper"]
+        rouse_helper["rouse_ctypes_helper"]
+    end
+
+    %% Applications Module
+    subgraph Applications["applications/ - Orchestration"]
+        app_lve["ApplicationLVE<br/>(❌ 10 theory imports!)"]
+        app_laos["ApplicationLAOS"]
+        app_mwd["ApplicationMWD"]
+    end
+
+    %% Tools Module
+    subgraph Tools["tools/ - Utilities"]
+        tool_eval["ToolEvaluate<br/>(✅ safe_eval)"]
+        tool_db["ToolMaterialsDatabase"]
+        tool_smooth["ToolSmooth<br/>(✅ numpy, no scipy!)"]
+    end
+
+    %% ========================================
+    %% DEPENDENCY EDGES
+    %% ========================================
+
+    %% External Dependencies
+    numpy --> datatable
+    numpy --> param
+    numpy --> file
+    numpy --> nlsq_fit
+
+    jax --> nlsq_fit
+    jax --> nlsq_optimize
+    jax --> roliepoly
+    jax --> safe_eval
+
+    nlsq --> nlsq_fit
+
+    pyside6 --> qappmanager
+    pyside6 --> qappwindow
+    pyside6 --> qdataset
+    pyside6 --> qtheory
+    pyside6 --> multiview
+
+    matplotlib --> datatable
+    matplotlib --> qappwindow
+
+    numpyro --> qtheory
+
+    %% Core Internal Dependencies
+    datatable --> file
+    file --> filetype
+    cmdbase --> multiview
+    param --> interfaces
+
+    %% Fitting Dependencies
+    nlsq_optimize --> nlsq_fit
+    interfaces --> nlsq_fit
+    param --> nlsq_fit
+
+    %% GUI Dependencies
+    qappmanager --> qappwindow
+    qappmanager --> app_lve
+    qappmanager --> app_laos
+    qappmanager --> app_mwd
+
+    qappwindow --> qdataset
+    qappwindow --> qtheory
+    qappwindow --> multiview
+    qappwindow --> fit_controller
+    qappwindow --> inference_controller
+    qappwindow --> export_controller
+    qappwindow --> fit_view
+    qappwindow --> inference_view
+    qappwindow --> plot_views
+
+    qdataset --> datatable
+    qdataset --> file
+    qdataset --> qtheory
+
+    qtheory --> param
+    qtheory --> datatable
+    qtheory --> nlsq_optimize
+    qtheory --> fit_controller
+    qtheory --> inference_controller
+
+    %% Controllers Dependencies (✅ Clean - no Qt!)
+    fit_controller --> nlsq_fit
+    fit_controller --> interfaces
+    inference_controller --> numpyro
+    inference_controller --> interfaces
+
+    %% Theory Dependencies (❌ CIRCULAR!)
+    theory_basic -.->|inherits| qtheory
+    maxwell -.->|inherits| qtheory
+    roliepoly -.->|inherits| qtheory
+    bob -.->|inherits| qtheory
+    likhtman -.->|inherits| qtheory
+
+    maxwell --> param
+    roliepoly --> param
+    bob --> param
+
+    bob --> bob_helper
+    react_helper --> CTypes
+    rouse_helper --> CTypes
+
+    %% Application Dependencies (❌ DIRECT IMPORTS!)
+    app_lve -.->|imports| maxwell
+    app_lve -.->|imports| roliepoly
+    app_lve -.->|imports| likhtman
+    app_lve --> qappwindow
+    app_laos --> qappwindow
+    app_mwd --> qappwindow
+
+    %% Tool Dependencies (✅ Clean!)
+    tool_eval --> safe_eval
+    tool_smooth --> numpy
+
+    %% ========================================
+    %% STYLING
+    %% ========================================
+
+    classDef critical fill:#ff6b6b,stroke:#c92a2a,stroke-width:3px,color:#fff
+    classDef warning fill:#ffa94d,stroke:#fd7e14,stroke-width:2px
+    classDef good fill:#51cf66,stroke:#2f9e44,stroke-width:2px
+    classDef new fill:#74c0fc,stroke:#1971c2,stroke-width:2px
+
+    class datatable,multiview,qtheory,theory_basic critical
+    class qappwindow,qdataset,app_lve warning
+    class interfaces,serialization,safe_eval,fit_controller,inference_controller,tool_smooth good
+    class Controllers,Views,Fitting new
+
+    %% Legend
+    subgraph Legend
+        L1["❌ Critical Issues<br/>(circular deps, tight coupling)"]
+        L2["⚠️ Needs Attention<br/>(moderate coupling)"]
+        L3["✅ Good Architecture<br/>(loose coupling)"]
+        L4["🆕 New Components<br/>(migration improvements)"]
+    end
+
+    class L1 critical
+    class L2 warning
+    class L3 good
+    class L4 new
+```
+
+---
+
+## Key Architectural Problems (Visual Guide)
+
+### 🔴 Critical Circular Dependency Cycles
+
+```mermaid
+graph LR
+    A[gui/QTheory] -->|imports| B[theories/*]
+    B -->|inherits from| A
+
+    C[gui/QApplicationWindow] -->|imports| D[applications/*]
+    D -->|imports| C
+
+    E[core/DataTable] -->|creates| F[matplotlib.lines.Line2D]
+    F -->|requires| E
+
+    style A fill:#ff6b6b
+    style B fill:#ff6b6b
+    style C fill:#ffa94d
+    style D fill:#ffa94d
+    style E fill:#ff6b6b
+    style F fill:#ff6b6b
+```
+
+### 🟢 Target Architecture (After Migration)
+
+```mermaid
+graph TB
+    subgraph "Business Logic Layer"
+        theory[ITheory Protocol]
+        calc[Pure JAX Calculations]
+        data[DataTable - No Matplotlib]
+    end
+
+    subgraph "Presentation Layer"
+        gui[QTheoryWidget]
+        plot[PlotView]
+    end
+
+    subgraph "Orchestration Layer"
+        controller[FitController]
+        registry[TheoryRegistry]
+    end
+
+    theory --> calc
+    calc --> data
+    controller --> theory
+    gui --> controller
+    plot --> data
+    registry -.->|lookup| theory
+
+    style theory fill:#51cf66
+    style calc fill:#51cf66
+    style data fill:#51cf66
+    style controller fill:#74c0fc
+    style registry fill:#74c0fc
+```
+
+---
+
+## Data Flow Architecture (Current vs. Target)
+
+### 🔴 Current: Tightly Coupled Data Flow
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant QApplicationWindow
+    participant DataTable
+    participant QTheory
+    participant Theory Logic
+    participant Matplotlib
+
+    User->>QApplicationWindow: Load File
+    QApplicationWindow->>DataTable: Create with axes ❌
+    DataTable->>Matplotlib: Create Line2D objects ❌
+
+    User->>QTheory: Fit Data
+    QTheory->>Theory Logic: Calculate (mixed with GUI) ❌
+    Theory Logic->>DataTable: Update data
+    DataTable->>Matplotlib: Update Line2D ❌
+    Matplotlib-->>User: Render plot
+
+    Note over DataTable,Matplotlib: ❌ Data coupled to visualization
+    Note over QTheory,Theory Logic: ❌ Business logic in GUI class
+```
+
+### 🟢 Target: Clean Separation
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant View
+    participant Controller
+    participant ITheory
+    participant DataModel
+    participant Renderer
+
+    User->>View: Load File
+    View->>Controller: handle_load()
+    Controller->>DataModel: Create DataTable ✅
+    Note over DataModel: No visualization objects
+
+    User->>View: Fit Data
+    View->>Controller: handle_fit()
+    Controller->>ITheory: calculate(params, x) ✅
+    ITheory-->>Controller: JAX Array
+    Controller->>DataModel: Update data
+    Controller->>View: notify_change()
+    View->>Renderer: plot(data_model) ✅
+    Renderer-->>User: Render plot
+
+    Note over DataModel: ✅ Pure data
+    Note over ITheory: ✅ Pure computation
+    Note over Controller: ✅ Orchestration only
+```
+
+---
+
+## Migration Priority Heatmap
+
+| Module | Complexity | Coupling | Test Coverage | Priority |
+|--------|-----------|----------|---------------|----------|
+| **QTheory** | 🔴 Very High | 🔴 Very High | 🟡 Medium | 🔴 **CRITICAL** |
+| **DataTable** | 🟡 Medium | 🔴 High | 🟡 Medium | 🔴 **CRITICAL** |
+| **QApplicationWindow** | 🔴 High | 🔴 High | 🔴 Low | 🔴 **HIGH** |
+| **Theories/** | 🟡 Medium | 🔴 High | 🟢 High | 🟡 **HIGH** |
+| **Applications/** | 🟢 Low | 🟡 Medium | 🟡 Medium | 🟢 **MEDIUM** |
+| **Controllers/** | 🟢 Low | 🟢 Low | 🔴 Low | 🟢 **LOW** (new) |
+
+Legend:
+- 🔴 High Risk / Complexity
+- 🟡 Medium Risk / Complexity
+- 🟢 Low Risk / Complexity
