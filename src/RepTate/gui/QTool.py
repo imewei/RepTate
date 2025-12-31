@@ -55,7 +55,6 @@ from PySide6.QtCore import Qt, QSize, Signal
 from PySide6.QtGui import QIcon, QCursor, QTextCursor
 from RepTate.core.Parameter import OptType, ParameterType
 from math import ceil, floor
-from collections import OrderedDict
 
 import logging
 from html.parser import HTMLParser
@@ -113,7 +112,7 @@ class QTool(QWidget, Ui_ToolTab):
         self.name = name
         self.parent_application = parent_app
         self.parameters = (
-            OrderedDict()
+            {}
         )  # keep the dictionary key in order for the parameter table
         self.active = True  # defines if the Tool is plotted
         self.applytotheory = True  # Do we also apply the tool to the theory?

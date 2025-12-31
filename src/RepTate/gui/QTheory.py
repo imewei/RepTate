@@ -110,7 +110,6 @@ from RepTate.core.DataTable import DataTable
 from RepTate.core.DraggableArtists import DraggableVLine, DraggableHLine, DragType
 from RepTate.tools.ToolMaterialsDatabase import check_chemistry, get_all_parameters
 import logging
-from collections import OrderedDict
 from math import ceil, floor, log
 import RepTate
 from html.parser import HTMLParser
@@ -390,7 +389,7 @@ class QTheory(QWidget, Ui_TheoryTab):
         self.posterior_plot = PosteriorPlot(self)
         self.diagnostics_panel = DiagnosticsPanel(self)
         self.parameters = (
-            OrderedDict()
+            {}
         )  # keep the dictionary key in order for the parameter table
         self.tables = {}
         self.function = None

@@ -76,7 +76,7 @@ from RepTate.applications.ApplicationLAOS import ApplicationLAOS
 from urllib.request import urlopen
 import json
 
-from collections import OrderedDict
+
 import numpy as np
 import time
 import logging
@@ -147,8 +147,8 @@ class QApplicationManager(QMainWindow, Ui_MainWindow):
 
         # SETUP APPLICATIONS
         self.application_counter = 0
-        self.applications = OrderedDict()
-        self.available_applications = OrderedDict()
+        self.applications = {}
+        self.available_applications = {}
         self.available_applications[ApplicationMWD.appname] = ApplicationMWD
         self.available_applications[ApplicationTTS.appname] = ApplicationTTS
         self.available_applications[
@@ -685,7 +685,7 @@ class QApplicationManager(QMainWindow, Ui_MainWindow):
     def save_reptate(self, fpath):
         """Save RepTate project to 'fpath'"""
         self.load_path = fpath
-        apps_dic = OrderedDict()
+        apps_dic = {}
         napps = self.ApplicationtabWidget.count()
         nth_saved = 0
         nfile_saved = 0
@@ -694,21 +694,21 @@ class QApplicationManager(QMainWindow, Ui_MainWindow):
             app = self.ApplicationtabWidget.widget(i)
 
             # Save DataSets in application
-            datasets_dic = OrderedDict()
+            datasets_dic = {}
             ndatasets = app.DataSettabWidget.count()
             for j in range(ndatasets):
                 ds = app.DataSettabWidget.widget(j)
-                files_dic = OrderedDict()
+                files_dic = {}
                 for f in ds.files:
                     nfile_saved += 1
-                    param_dic = OrderedDict(
+                    param_dic = dict(
                         [
                             (pname, f.file_parameters[pname])
                             for pname in f.file_parameters
                         ]
                     )
 
-                    file_dic = OrderedDict(
+                    file_dic = dict(
                         [
                             ("fname", basename(f.file_full_path)),
                             ("is_active", f.active),
@@ -726,15 +726,15 @@ class QApplicationManager(QMainWindow, Ui_MainWindow):
                     files_dic[f.file_name_short] = file_dic
 
                 # Save theories in DataSet
-                theories_dic = OrderedDict()
+                theories_dic = {}
                 ntheories = ds.TheorytabWidget.count()
                 for k in range(ntheories):
                     nth_saved += 1
                     th = ds.TheorytabWidget.widget(k)
-                    param_dic = OrderedDict(
+                    param_dic = dict(
                         [(pname, th.parameters[pname].value) for pname in th.parameters]
                     )
-                    th_table_dic = OrderedDict(
+                    th_table_dic = dict(
                         [
                             (
                                 f.file_name_short,
@@ -744,7 +744,7 @@ class QApplicationManager(QMainWindow, Ui_MainWindow):
                         ]
                     )
                     # save extra_tables
-                    th_extra_table_dic = OrderedDict()
+                    th_extra_table_dic = {}
                     for f in ds.files:
                         dic_copy = {}
                         # loop over extra table and convert np.array to list
@@ -767,7 +767,7 @@ class QApplicationManager(QMainWindow, Ui_MainWindow):
                         else:
                             e_dic_copy[key] = val
 
-                    th_dic = OrderedDict(
+                    th_dic = dict(
                         [
                             ("th_tabname", ds.TheorytabWidget.tabText(k)),
                             ("thname", th.thname),
@@ -786,7 +786,7 @@ class QApplicationManager(QMainWindow, Ui_MainWindow):
                     theories_dic[th.name] = th_dic
 
                 # Save figure markers
-                ds_markers = OrderedDict(
+                ds_markers = dict(
                     [
                         ("marker_size", ds.marker_size),
                         ("line_width", ds.line_width),
@@ -804,7 +804,7 @@ class QApplicationManager(QMainWindow, Ui_MainWindow):
                     ]
                 )
                 # Save full DataSet
-                ds_dict = OrderedDict(
+                ds_dict = dict(
                     [
                         ("ds_tabname", app.DataSettabWidget.tabText(j)),
                         ("files", files_dic),
@@ -816,13 +816,13 @@ class QApplicationManager(QMainWindow, Ui_MainWindow):
                 datasets_dic[ds.name] = ds_dict
 
             # Save Tools
-            tools_dic = OrderedDict()  # contain all the tools
+            tools_dic = {}  # contain all the tools
             for tool in app.tools:
                 ntool_saved += 1
-                param_dic = OrderedDict()
+                param_dic = {}
                 for pname in tool.parameters:
                     param_dic[pname] = tool.parameters[pname].value
-                tool_dic = OrderedDict(
+                tool_dic = dict(
                     [
                         ("tool_name", tool.toolname),  # what tool
                         (
@@ -852,7 +852,7 @@ class QApplicationManager(QMainWindow, Ui_MainWindow):
             }
 
             # annotations
-            ann_dict = OrderedDict()
+            ann_dict = {}
             for k, ann in enumerate(app.graphicnotes):
                 ann_opts = {}
                 ann_text = ann.get_text()
@@ -876,7 +876,7 @@ class QApplicationManager(QMainWindow, Ui_MainWindow):
                 }
 
             # collect all app info
-            app_dic = OrderedDict(
+            app_dic = dict(
                 [
                     ("app_tabname", self.ApplicationtabWidget.tabText(i)),
                     ("app_indx", i),
@@ -900,7 +900,7 @@ class QApplicationManager(QMainWindow, Ui_MainWindow):
         date = verdata["date"].split("T")[0]
         build = verdata["version"]
 
-        out = OrderedDict(
+        out = dict(
             [
                 (
                     "RepTate_version",
@@ -1110,7 +1110,7 @@ class QApplicationManager(QMainWindow, Ui_MainWindow):
                     z.extract(self.REPTATE_PROJ_JSON, tmpdirname)
                     data = json.load(
                         open(join(tmpdirname, self.REPTATE_PROJ_JSON)),
-                        object_pairs_hook=OrderedDict,
+                        object_pairs_hook=dict,
                     )
         except:
             print('File "%s" seems to be corrupted' % project_path)

@@ -43,8 +43,6 @@ import math
 import re
 import traceback
 from pathlib import Path
-from numpy import *
-from numpy.random import *
 import numpy as np
 from os.path import dirname, join, abspath, isfile, isdir
 
@@ -99,7 +97,6 @@ from RepTate.gui.QDataSet import ColorMode, SymbolMode, ThLineMode
 
 from RepTate.core.DraggableArtists import DragType, DraggableSeries, DraggableNote
 from RepTate.gui.SpreadsheetWidget import SpreadsheetWidget
-from collections import OrderedDict
 from RepTate.gui.ImportExcelWindow import ImportExcelWindow
 from RepTate.gui.ImportFromPastedWindow import ImportFromPastedWindow
 
@@ -107,6 +104,11 @@ from RepTate.gui.ImportFromPastedWindow import ImportFromPastedWindow
 # pyuic5 gui/markerSettings.ui -o gui/markerSettings.py
 from RepTate.gui.markerSettings import Ui_Dialog
 import logging
+from RepTate.core.feature_flags import is_enabled
+
+# Conditionally import safe_eval for secure expression evaluation
+if is_enabled("USE_SAFE_EVAL"):
+    from RepTate.core.safe_eval import safe_eval_array
 
 
 # I think the following lines are not needed anymore
@@ -383,11 +385,11 @@ class QApplicationWindow(QMainWindow, Ui_AppWindow):
 
         self.name = name
         self.parent_manager = parent
-        self.views = OrderedDict()
-        self.filetypes = OrderedDict()  # keep filetypes in order
-        self.theories = OrderedDict()  # keep theory combobox in order
-        self.availabletools = OrderedDict()  # keep tools combobox in order
-        self.extratools = OrderedDict()  # keep tools combobox in order
+        self.views = {}
+        self.filetypes = {}  # keep filetypes in order
+        self.theories = {}  # keep theory combobox in order
+        self.availabletools = {}  # keep tools combobox in order
+        self.extratools = {}  # keep tools combobox in order
         self.datasets = {}
         self.tools = []
         self.num_tools = 0
@@ -420,7 +422,7 @@ class QApplicationWindow(QMainWindow, Ui_AppWindow):
         from RepTate.tools.ToolMaterialsDatabase import ToolMaterialsDatabase
 
         # Theories available everywhere
-        self.common_theories = OrderedDict()  # keep theory combobox in order
+        self.common_theories = {}  # keep theory combobox in order
         self.common_theories[TheoryPolynomial.thname] = TheoryPolynomial
         self.common_theories[TheoryPowerLaw.thname] = TheoryPowerLaw
         self.common_theories[TheoryExponential.thname] = TheoryExponential
@@ -914,7 +916,7 @@ class QApplicationWindow(QMainWindow, Ui_AppWindow):
                 for f in ds.files:
                     if f.active:
                         series = f.data_table.series
-                        all_views_data = OrderedDict()
+                        all_views_data = {}
                         max_row_len = 0
                         max_view_name_len = 0
                         for nx, view in enumerate(self.multiviews):
@@ -2901,7 +2903,17 @@ class QApplicationWindow(QMainWindow, Ui_AppWindow):
                 self.safe_dict["x"] = xrange
                 for i, cname in enumerate(cols):  # loop over the Parameters
                     expr = d.c_new[i].text()
-                    x2 = eval(expr, {"__builtins__": None}, self.safe_dict)
+                    if is_enabled("USE_SAFE_EVAL"):
+                        # Use secure AST-based evaluation
+                        bindings = {"x": xrange}
+                        try:
+                            x2 = safe_eval_array(expr, bindings)
+                        except ValueError as e:
+                            self.logger.warning(f"Expression error: {e}, falling back to legacy eval")
+                            x2 = eval(expr, {"__builtins__": None}, self.safe_dict)
+                    else:
+                        # Legacy eval-based evaluation
+                        x2 = eval(expr, {"__builtins__": None}, self.safe_dict)
                     f.data_table.data[:, i] = x2
 
                 self.addTableToCurrentDataSet(f, ftype.extension)
