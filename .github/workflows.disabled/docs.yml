@@ -1,0 +1,89 @@
+name: Documentation
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'docs/**'
+      - 'src/**/*.py'
+      - '.github/workflows/docs.yml'
+  pull_request:
+    branches: [master]
+    paths:
+      - 'docs/**'
+      - 'src/**/*.py'
+
+jobs:
+  build-docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          pip install -e .[docs]
+          pip install sphinx sphinx-rtd-theme sphinxcontrib-bibtex
+
+      - name: Build documentation
+        run: |
+          cd docs
+          make html
+
+      - name: Check for warnings
+        run: |
+          cd docs
+          make html 2>&1 | tee build.log
+          if grep -q "WARNING" build.log; then
+            echo "::warning::Documentation has warnings"
+          fi
+
+      - name: Upload documentation artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: documentation
+          path: docs/build/html/
+
+  check-docstrings:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install interrogate
+        run: pip install interrogate
+
+      - name: Check docstring coverage
+        run: |
+          interrogate src/RepTate/core -v --fail-under 70
+          interrogate src/RepTate/gui/*.py -v --fail-under 60
+
+      - name: Generate coverage badge
+        run: |
+          interrogate src/RepTate --generate-badge docs/source/images/
+
+  lint-docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install doc8
+        run: pip install doc8
+
+      - name: Lint RST files
+        run: |
+          doc8 docs/source --ignore D001 --max-line-length 120
+        continue-on-error: true
