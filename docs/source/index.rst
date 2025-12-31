@@ -30,6 +30,7 @@ Contents:
    features
    installation
    manual/manual
+   api/index
    developers/developers
    contributors
    version
