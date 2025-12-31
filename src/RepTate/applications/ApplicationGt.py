@@ -39,7 +39,8 @@ from RepTate.gui.QApplicationWindow import QApplicationWindow
 from RepTate.core.View import View
 from RepTate.core.FileType import TXTColumnFile
 import numpy as np
-from scipy import interpolate
+import jax.numpy as jnp
+from interpax import interp1d
 
 from PySide6.QtWidgets import (
     QSpinBox,
@@ -384,39 +385,22 @@ class ApplicationGt(QApplicationWindow):
         x = np.zeros((n, 2))
         y = np.zeros((n, 2))
 
+        # Convert to JAX arrays
+        data_x_jax = jnp.array(data_x)
+        data_y_jax = jnp.array(data_y)
+
+        # Choose interpolation method based on number of points
         if len(data_x) < 2:
-            f = interpolate.interp1d(
-                data_x,
-                data_y,
-                kind="zero",
-                assume_sorted=True,
-                fill_value="extrapolate",
-            )
+            method = "nearest"
         elif len(data_x) < 3:
-            f = interpolate.interp1d(
-                data_x,
-                data_y,
-                kind="linear",
-                assume_sorted=True,
-                fill_value="extrapolate",
-            )
+            method = "linear"
         elif len(data_x) < 4:
-            f = interpolate.interp1d(
-                data_x,
-                data_y,
-                kind="quadratic",
-                assume_sorted=True,
-                fill_value="extrapolate",
-            )
+            method = "quadratic"
         else:
-            f = interpolate.interp1d(
-                data_x,
-                data_y,
-                kind="cubic",
-                assume_sorted=True,
-                fill_value="extrapolate",
-            )
-        g0 = f(0)
+            method = "cubic"
+
+        # Interpolate at t=0 using interpax
+        g0 = float(interp1d(jnp.array([0.0]), data_x_jax, data_y_jax, method=method, extrap=True)[0])
         ind1 = np.argmax(data_x > 0)
         t1 = data_x[ind1]
         g1 = data_y[ind1]
@@ -471,10 +455,12 @@ class ApplicationGt(QApplicationWindow):
         x = np.zeros((n, 2))
         y = np.zeros((n, 2))
 
-        f = interpolate.interp1d(
-            data_x, data_y, kind="cubic", assume_sorted=True, fill_value="extrapolate"
-        )
-        g0 = f(0)
+        # Convert to JAX arrays
+        data_x_jax = jnp.array(data_x)
+        data_y_jax = jnp.array(data_y)
+
+        # Interpolate at t=0 using interpax
+        g0 = float(interp1d(jnp.array([0.0]), data_x_jax, data_y_jax, method="cubic", extrap=True)[0])
         ind1 = np.argmax(data_x > 0)
         t1 = data_x[ind1]
         g1 = data_y[ind1]
@@ -489,7 +475,9 @@ class ApplicationGt(QApplicationWindow):
         for i in range(ind1 + 1, n):
             tmp = np.logspace(log10(data_x[i - 1]), log10(data_x[i]), self.OVER + 1)
             xdata = np.append(xdata, tmp[1:])
-        ydata = f(xdata)
+        # Interpolate at oversampled points using interpax
+        xdata_jax = jnp.array(xdata)
+        ydata = np.array(interp1d(xdata_jax, data_x_jax, data_y_jax, method="cubic", extrap=True))
 
         coeff = (ydata[1:] - ydata[:-1]) / (xdata[1:] - xdata[:-1])
         for i, w in enumerate(wp):

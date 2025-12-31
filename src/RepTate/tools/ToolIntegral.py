@@ -36,9 +36,9 @@ Integral file for creating a new Tool
 """
 import traceback
 import numpy as np
+import jax.numpy as jnp
+from interpax import interp1d
 from RepTate.gui.QTool import QTool
-from scipy.integrate import odeint
-from scipy.interpolate import interp1d
 
 
 class ToolIntegral(QTool):
@@ -67,24 +67,27 @@ class ToolIntegral(QTool):
 
 
     def calculate(self, x, y, ax=None, color=None, file_parameters=[]):
-        """Integral function that returns the square of the y, according to the view"""
+        """Integral function that returns the cumulative integral of y with respect to x"""
         xunique, indunique = np.unique(x, return_index=True)
         num_rows = len(xunique)
         yunique = y[indunique]
         try:
-            ff = interp1d(
-                xunique,
-                yunique,
-                bounds_error=False,
-                kind="cubic",
-                fill_value="extrapolate",
-                assume_sorted=True,
-            )
+            # Convert to JAX arrays for interpolation
+            xunique_jax = jnp.array(xunique)
+            yunique_jax = jnp.array(yunique)
 
-            func = lambda y0, t: ff(t)
-            y2 = odeint(func, [0], xunique)
+            # Interpolate using interpax (note: interpax is a function, not a factory)
+            # We interpolate at the original points to smooth the data
+            y_interp = interp1d(xunique_jax, xunique_jax, yunique_jax, method="cubic", extrap=True)
 
-            y2 = np.reshape(y2, num_rows)
+            # Cumulative trapezoidal integration
+            dx = xunique_jax[1:] - xunique_jax[:-1]
+            avg_y = (y_interp[1:] + y_interp[:-1]) / 2.0
+            cumulative = jnp.concatenate([jnp.array([0.0]), jnp.cumsum(avg_y * dx)])
+
+            # Convert back to numpy for plotting
+            y2 = np.array(cumulative)
+
             self.Qprint("<b>I</b> = %g" % y2[-1])
             return xunique, y2
         except Exception as e:

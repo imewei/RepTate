@@ -39,7 +39,8 @@ from RepTate.gui.QApplicationWindow import QApplicationWindow
 from RepTate.core.View import View
 from RepTate.core.FileType import TXTColumnFile
 import numpy as np
-from scipy import interpolate
+import jax.numpy as jnp
+from interpax import interp1d
 
 from PySide6.QtWidgets import (
     QSpinBox,
@@ -403,10 +404,12 @@ class ApplicationCreep(QApplicationWindow):
         x = np.zeros((n, 2))
         y = np.zeros((n, 2))
 
-        f = interpolate.interp1d(
-            t, j, kind="cubic", assume_sorted=True, fill_value="extrapolate"
-        )
-        j0 = f([0])[0]
+        # Convert to JAX arrays
+        t_jax = jnp.array(t)
+        j_jax = jnp.array(j)
+
+        # Interpolate at t=0 using interpax
+        j0 = float(interp1d(jnp.array([0.0]), t_jax, j_jax, method="cubic", extrap=True)[0])
         ind1 = np.argmax(t > 0)
         t1 = t[ind1]
         j1 = j[ind1]
@@ -448,10 +451,12 @@ class ApplicationCreep(QApplicationWindow):
         x = np.zeros((n, 2))
         y = np.zeros((n, 2))
 
-        f = interpolate.interp1d(
-            t, j, kind="cubic", assume_sorted=True, fill_value="extrapolate"
-        )
-        j0 = f([0])[0]
+        # Convert to JAX arrays
+        t_jax = jnp.array(t)
+        j_jax = jnp.array(j)
+
+        # Interpolate at t=0 using interpax
+        j0 = float(interp1d(jnp.array([0.0]), t_jax, j_jax, method="cubic", extrap=True)[0])
         ind1 = np.argmax(t > 0)
         t1 = t[ind1]
         j1 = j[ind1]
@@ -466,7 +471,9 @@ class ApplicationCreep(QApplicationWindow):
         for i in range(ind1 + 1, n):
             tmp = np.logspace(log10(t[i - 1]), log10(t[i]), self.OVER + 1)
             tover = np.append(tover, tmp[1:])
-        jover = f(tover)
+        # Interpolate at oversampled points using interpax
+        tover_jax = jnp.array(tover)
+        jover = np.array(interp1d(tover_jax, t_jax, j_jax, method="cubic", extrap=True))
         nover = len(tover)
 
         aux = (

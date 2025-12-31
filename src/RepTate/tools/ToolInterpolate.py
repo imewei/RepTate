@@ -36,9 +36,10 @@ Interpolate/Extrapolate data
 """
 import traceback
 import numpy as np
+import jax.numpy as jnp
+from interpax import interp1d
 from RepTate.core.Parameter import Parameter, ParameterType, OptType
 from RepTate.gui.QTool import QTool
-from scipy.interpolate import interp1d
 
 
 class ToolInterpolateExtrapolate(QTool):
@@ -67,29 +68,25 @@ class ToolInterpolateExtrapolate(QTool):
 
 
     def calculate(self, x, y, ax=None, color=None, file_parameters=[]):
-        """InterpolateExtrapolate function that returns the square of the y, according to the view"""
+        """InterpolateExtrapolate function that interpolates/extrapolates y at a given x value"""
         xval = self.parameters["x"].value
         xunique, indunique = np.unique(x, return_index=True)
         yunique = y[indunique]
         try:
-            # table='''<table border="1" width="100%">'''
-            # table+='''<tr><th>x</th><th>y</th></tr>'''
+            # Convert to JAX arrays
+            xunique_jax = jnp.array(xunique)
+            yunique_jax = jnp.array(yunique)
+            xval_jax = jnp.array([xval])  # interpax expects array for query points
+
+            # Interpolate using interpax
+            yval_array = interp1d(xval_jax, xunique_jax, yunique_jax, method="cubic", extrap=True)
+            yval = float(yval_array[0])
+
+            # Format output table
             table = [
                 ["%-10s" % "x", "%-10s" % "y"],
+                ["%-10.4e" % xval, "%-10.4e" % yval],
             ]
-            ff = interp1d(
-                xunique,
-                yunique,
-                bounds_error=False,
-                kind="cubic",
-                fill_value="extrapolate",
-                assume_sorted=True,
-            )
-            func = lambda t: ff(t)
-            yval = func(xval)
-            # table+='''<tr><td>%.4e</td><td>%.4e</td></tr>'''%(xval,yval)
-            table.append(["%-10.4e" % xval, "%-10.4e" % yval])
-            # table+='''</table><br>'''
             self.Qprint(table)
         except Exception as e:
             self.Qprint(

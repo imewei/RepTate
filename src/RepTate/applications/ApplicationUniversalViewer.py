@@ -38,10 +38,43 @@ Definition of a new Application for viewing generic txt data
 from RepTate.gui.QApplicationWindow import QApplicationWindow
 from RepTate.core.View import View
 from RepTate.core.FileType import TXTColumnFile
-from numpy import *
 import numpy as np
 import re
 import configparser
+
+# Safe numpy functions for expression evaluation
+_SAFE_NUMPY_FUNCTIONS = {
+    "sin": np.sin,
+    "cos": np.cos,
+    "tan": np.tan,
+    "arccos": np.arccos,
+    "arcsin": np.arcsin,
+    "arctan": np.arctan,
+    "arctan2": np.arctan2,
+    "deg2rad": np.deg2rad,
+    "rad2deg": np.rad2deg,
+    "sinh": np.sinh,
+    "cosh": np.cosh,
+    "tanh": np.tanh,
+    "arcsinh": np.arcsinh,
+    "arccosh": np.arccosh,
+    "arctanh": np.arctanh,
+    "around": np.around,
+    "round_": np.round_,
+    "rint": np.rint,
+    "floor": np.floor,
+    "ceil": np.ceil,
+    "trunc": np.trunc,
+    "exp": np.exp,
+    "log": np.log,
+    "log10": np.log10,
+    "fabs": np.fabs,
+    "mod": np.mod,
+    "e": np.e,
+    "pi": np.pi,
+    "power": np.power,
+    "sqrt": np.sqrt,
+}
 
 
 class ViewParseExpression(object):
@@ -55,41 +88,7 @@ class ViewParseExpression(object):
         self.xexpr = xexpr
         self.yexpr = yexpr
 
-        safe_list = [
-            "sin",
-            "cos",
-            "tan",
-            "arccos",
-            "arcsin",
-            "arctan",
-            "arctan2",
-            "deg2rad",
-            "rad2deg",
-            "sinh",
-            "cosh",
-            "tanh",
-            "arcsinh",
-            "arccosh",
-            "arctanh",
-            "around",
-            "round_",
-            "rint",
-            "floor",
-            "ceil",
-            "trunc",
-            "exp",
-            "log",
-            "log10",
-            "fabs",
-            "mod",
-            "e",
-            "pi",
-            "power",
-            "sqrt",
-        ]
-        self.safe_dict = {}
-        for k in safe_list:
-            self.safe_dict[k] = globals().get(k, None)
+        self.safe_dict = _SAFE_NUMPY_FUNCTIONS.copy()
 
     def view(self, dt, file_parameters):
         """Actual function that processes the expression, extracts variables, file parameters and columns, and produces the view"""

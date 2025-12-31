@@ -35,9 +35,63 @@
 Smooth data by applying a Savitzky-Golay filter
 """
 import traceback
+import numpy as np
+import jax.numpy as jnp
 from RepTate.core.Parameter import Parameter, ParameterType
 from RepTate.gui.QTool import QTool
-from scipy.signal import savgol_filter
+
+
+def _savgol_filter_jax(y, window_length, polyorder):
+    """JAX implementation of Savitzky-Golay filter.
+
+    This function smooths data using a Savitzky-Golay filter, which fits
+    successive sub-sets of adjacent data points with a low-degree polynomial
+    by the method of linear least squares.
+
+    Args:
+        y: Array of values to be filtered
+        window_length: The length of the filter window (i.e., number of coefficients).
+                      Must be a positive odd integer.
+        polyorder: The order of the polynomial used to fit the samples.
+                  Must be less than window_length.
+
+    Returns:
+        Filtered array of same shape as y
+    """
+    # Convert to JAX array
+    y = jnp.asarray(y)
+
+    # Validate inputs
+    if window_length % 2 != 1 or window_length < 1:
+        raise ValueError("window_length must be a positive odd integer")
+    if window_length < polyorder + 1:
+        raise ValueError("window_length must be greater than polyorder")
+    if window_length > len(y):
+        raise ValueError("window_length is too large for the data")
+
+    # Half window size
+    half_window = (window_length - 1) // 2
+
+    # Create the Vandermonde matrix for polynomial fitting
+    # x values centered around 0
+    x = jnp.arange(-half_window, half_window + 1)
+
+    # Build Vandermonde matrix (each column is x^i for i from 0 to polyorder)
+    A = jnp.vander(x, polyorder + 1, increasing=True)
+
+    # Solve for filter coefficients using least squares
+    # The middle row of (A^T A)^-1 A^T gives us the filter coefficients
+    # for computing the smoothed value at the center point
+    coeffs = jnp.linalg.pinv(A)[0]  # Get coefficients for 0-th derivative (smoothing)
+
+    # Apply the filter using convolution
+    # Pad the array to handle edges
+    y_padded = jnp.pad(y, half_window, mode='edge')
+
+    # Convolve with filter coefficients (reversed for correlation)
+    filtered = jnp.convolve(y_padded, coeffs[::-1], mode='valid')
+
+    return filtered
 
 
 class ToolSmooth(QTool):
@@ -112,7 +166,10 @@ class ToolSmooth(QTool):
             return x, y
 
         try:
-            y2 = savgol_filter(y, window, order)
+            # Use JAX implementation of Savitzky-Golay filter
+            y2_jax = _savgol_filter_jax(y, window, order)
+            # Convert back to numpy for consistency
+            y2 = np.array(y2_jax)
             return x, y2
         except Exception as e:
             self.Qprint("in ToolSmooth.calculate(): %s" % traceback.format_exc())
