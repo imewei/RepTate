@@ -54,6 +54,24 @@ Ui_ImportPastedMainWindow, QMainWindowImportPasted = loadUiType(
 
 
 class ImportFromPastedWindow(QMainWindowImportPasted, Ui_ImportPastedMainWindow):
+    """Dialog window for importing data from pasted text.
+
+    This window provides a simple interface for importing numerical data by pasting
+    it directly from the clipboard into a text box. The data can include file parameters
+    on the first line and should contain tab or space-separated numerical columns.
+
+    The window handles:
+        - Parsing file parameters from the first line (format: param1=val1;param2=val2;)
+        - Reading multiple columns of numerical data
+        - Handling NaN values and conversion errors
+        - Supporting 2, 3, or 4 data columns based on file type
+
+    Attributes:
+        col_names (list): Expected column names from the file type.
+        col_units (list): Expected column units from the file type.
+        file_param (list): List of expected file parameter names.
+        num_cols (int): Number of expected data columns.
+    """
     def __init__(self, parent=None, ftype=None):
         super().__init__()
         self.setupUi(self)
@@ -78,9 +96,37 @@ class ImportFromPastedWindow(QMainWindowImportPasted, Ui_ImportPastedMainWindow)
         self.label_columns.setText(txt)
 
     def set_fname_dialog(self, fname):
+        """Set the filename label text.
+
+        Updates the displayed filename in the dialog window. This filename will be
+        included in the returned data dictionary.
+
+        Args:
+            fname: Filename string to display and associate with the pasted data.
+        """
         self.file_name_label.setText(fname)
 
     def get_data(self):
+        """Extract and parse data from the pasted text box.
+
+        Parses the pasted text to extract:
+            - File parameters from the first line (if present, in format param=value;)
+            - Numerical data columns (space or tab separated)
+
+        Lines containing only NaN values are skipped. Handles conversion errors by
+        inserting NaN values. Supports 2, 3, or 4 data columns based on file type.
+
+        Returns:
+            Dictionary containing:
+                - nrows (int): Number of data rows successfully parsed.
+                - flag_nan (bool): True if any NaN values were encountered.
+                - param_read (dict): File parameters extracted from first line.
+                - fname (str): Filename from the label.
+                - x (ndarray): First column data.
+                - y (ndarray): Second column data.
+                - z (ndarray or list): Third column data (empty list if num_cols <= 2).
+                - z2 (ndarray or list): Fourth column data (empty list if num_cols <= 3).
+        """
         pasted_txt = self.paste_box.toPlainText()
         flag_nan = False
         is_first_line = True

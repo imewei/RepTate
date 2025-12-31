@@ -410,6 +410,15 @@ class EditFileParametersDialog(QDialog):
         self.formGroupBox.setLayout(layout)
 
     def createFormGroupBoxTheory(self, file):
+        """Create a form to configure extended theory x-range parameters.
+
+        This creates the second tab in the Edit Parameters dialog, allowing users
+        to extend the theory calculation beyond the data x-range with custom
+        minimum/maximum values, number of points, and logarithmic spacing.
+
+        Args:
+            file: The File object whose theory parameters are being edited.
+        """
         self.formGroupBoxTheory = QGroupBox(
             'Extend theory xrange of "%s"' % file.file_name_short
         )
@@ -452,6 +461,13 @@ class EditFileParametersDialog(QDialog):
         self.activate_th_widgets()
 
     def update_current_view_xrange(self):
+        """Update the display of theory x-range in the current view's coordinates.
+
+        Transforms the raw theory xmin/xmax values through the current view's
+        transformation function to show what the limits will be in the displayed
+        coordinate system (e.g., after log transforms or other view operations).
+        Displays "N/A" if the input values are invalid.
+        """
         view = self.parent_dataset.parent_application.current_view
         tmp_dt = DataTable(axarr=[])
         tmp_dt.data = np.empty((1, 3))
@@ -477,6 +493,12 @@ class EditFileParametersDialog(QDialog):
             self.view_xmax.setText("%.4g" % x[0, 0])
 
     def activate_th_widgets(self):
+        """Enable or disable theory x-range widgets based on checkbox state.
+
+        Controls the enabled state of all theory parameter widgets based on
+        whether the "Extra theory xrange?" checkbox is checked. When unchecked,
+        all related input fields are disabled to prevent configuration.
+        """
         checked = self.with_extra_x.isChecked()
         self.th_xmin.setDisabled(not checked)
         self.th_xmax.setDisabled(not checked)
@@ -680,11 +702,31 @@ class QDataSet(QWidget, Ui_DataSet):
         )
 
     def write(self, type, flag):
-        """Write numpy error logs to the logger"""
+        """Write numpy error logs to the logger.
+
+        This is a callback function for numpy's seterrcall, which captures
+        numpy warning and error messages and routes them to RepTate's logging system.
+
+        Args:
+            type: String description of the numpy error type.
+            flag: Integer flag indicating the numpy error category.
+        """
         self.logger.info("numpy: %s (flag %s)" % (type, flag))
 
     def change_file_visibility(self, file_name_short, check_state=True):
-        """Hide/Show file in the figure"""
+        """Hide or show a file in the figure.
+
+        Changes the visibility of data and theory series for a specific file
+        in all plots. The visibility state is tracked in inactive_files to
+        persist across view changes.
+
+        Args:
+            file_name_short: Short name of the file to show/hide.
+            check_state: True to show the file, False to hide it.
+
+        Raises:
+            ValueError: If the file name matches zero or multiple files.
+        """
         file_matching = []
         for file in self.files:
             if file.file_name_short == file_name_short:  # find changed file
@@ -718,7 +760,15 @@ class QDataSet(QWidget, Ui_DataSet):
         self.do_plot()
 
     def do_show_all(self, line):
-        """Show all files in the current DataSet"""
+        """Show all files in the current DataSet.
+
+        Makes all data series visible except for files that were previously
+        manually hidden (tracked in inactive_files). Also shows the current
+        theory if one is active.
+
+        Args:
+            line: Unused argument retained for API compatibility.
+        """
         for file in self.files:
             if file.file_name_short not in self.inactive_files:
                 file.active = True
@@ -731,7 +781,14 @@ class QDataSet(QWidget, Ui_DataSet):
         self.do_plot("")
 
     def do_hide_all(self, line):
-        """Hide all files in the current DataSet"""
+        """Hide all files in the current DataSet.
+
+        Makes all data and theory series invisible in all plots. Sets all files
+        to inactive state and hides all theory curves.
+
+        Args:
+            line: Unused argument retained for API compatibility.
+        """
         for file in self.files:
             file.active = False
             dt = file.data_table
@@ -743,7 +800,15 @@ class QDataSet(QWidget, Ui_DataSet):
         self.do_plot("")
 
     def do_plot(self, line=""):
-        """Plot the current dataset using the current view of the parent application"""
+        """Plot the current dataset using the current view of the parent application.
+
+        Renders all active data files and theories in all plots with appropriate
+        symbols, colors, and line styles according to the current display settings.
+        Applies view transformations, active tools, and shift factors to the data.
+
+        Args:
+            line: Unused argument retained for API compatibility.
+        """
         # view = self.parent_application.current_view
 
         self.table_icon_list.clear()
@@ -1042,10 +1107,24 @@ class QDataSet(QWidget, Ui_DataSet):
         fparams={},
         file_type=None,
     ):
-        """Create File from xrange and file parameters
-        xrange: list of x points
-        yval: float
-        fparam: dict containing file parameter names and values
+        """Create a dummy File from x-range and file parameters.
+
+        Generates a synthetic data file with specified x-values and constant
+        y-values (and optionally z-values). Useful for creating baseline data,
+        testing theories, or generating reference curves.
+
+        Args:
+            fname: Base name for the file. If empty, auto-generated from parameters.
+            xrange: List of x coordinate values.
+            yval: Constant y-value or list of y-values for all columns.
+            zval: Optional z-values for third column, or None for NaN.
+            z2val: Optional values for fourth column, or None for NaN.
+            fparams: Dictionary of file parameter names and values.
+            file_type: FileType object defining the file structure and extension.
+
+        Returns:
+            tuple: (File object, bool) where bool is True if file was successfully
+                added (unique name) or (None, False) if file name already exists.
         """
         if fname == "":
             filename = (
@@ -1111,7 +1190,21 @@ class QDataSet(QWidget, Ui_DataSet):
             return None, False
 
     def do_open(self, line):
-        """Open file(s). Arguments: FILENAME(s) (pattern expansion characters -- \*, ? -- allowed"""
+        """Open data file(s) and add them to the current dataset.
+
+        Reads one or more data files, validates their extensions match, creates
+        File objects, and adds theory tables for each existing theory. Skips
+        files that are already loaded or have unrecognized extensions.
+
+        Args:
+            line: List of file paths to open (pattern expansion characters *, ? allowed).
+
+        Returns:
+            tuple: (status, newtables, extension) where:
+                - status: True if successful, or error message string if failed
+                - newtables: List of newly loaded File objects, or None on failure
+                - extension: File extension string, or None on failure
+        """
         f_names = line
         newtables = []
         if line == "" or len(f_names) == 0:
@@ -1149,7 +1242,16 @@ class QDataSet(QWidget, Ui_DataSet):
             return (message, None, None)
 
     def do_reload_data(self, line=""):
-        """Reload data files in the current DataSet"""
+        """Reload data files in the current DataSet from disk.
+
+        Re-reads all active files from their original file paths, updating
+        their parameters and data in memory. Useful for refreshing data after
+        external file modifications. Skips inactive files and warns if files
+        are missing.
+
+        Args:
+            line: Unused argument retained for API compatibility.
+        """
         for file in self.files:
             if not file.active:
                 continue
@@ -1181,7 +1283,15 @@ class QDataSet(QWidget, Ui_DataSet):
         return res
 
     def do_delete(self, name):
-        """Delete a theory from the current dataset"""
+        """Delete a theory from the current dataset.
+
+        Removes a theory by name, calling its destructor, removing all matplotlib
+        artists from the plots, and deleting it from the theories dictionary.
+        Updates the plot after deletion.
+
+        Args:
+            name: Name of the theory to delete.
+        """
         if name in self.theories.keys():
             self.theories[name].destructor()
             for tt in self.theories[
@@ -1197,7 +1307,17 @@ class QDataSet(QWidget, Ui_DataSet):
             print('Theory "%s" not found' % name)
 
     def do_save(self, line="", extra_txt=""):
-        """Save the active files of the current dataset to file"""
+        """Save the active files of the current dataset to file.
+
+        Writes all files to disk with their current parameters and data.
+        If no directory is specified, overwrites original files. Adds a timestamp
+        and user metadata header to each saved file.
+
+        Args:
+            line: Directory path where files should be saved. If empty, saves
+                to original file locations.
+            extra_txt: Extra text to append to filenames (e.g., "_fitted").
+        """
         counter = 0
 
         for f in self.files:
@@ -1245,8 +1365,19 @@ class QDataSet(QWidget, Ui_DataSet):
         QMessageBox.information(self, "Saved DataSet", msg)
 
     def new(self, line):
-        """Create a new theory"""
-        """Add a new theory of the type specified to the current Data Set"""
+        """Create a new theory and add it to the current dataset.
+
+        Instantiates a theory by name, assigns it a unique ID, adds it to the
+        theories dictionary, and optionally auto-calculates if the theory
+        supports it. Requires at least one file to be loaded.
+
+        Args:
+            line: Name of the theory type to create.
+
+        Returns:
+            tuple: (Theory object, theory_id) if successful, or (None, None) if
+                theory type doesn't exist or dataset is empty.
+        """
         thtypes = list(self.parent_application.theories.keys())
         if line in thtypes:
             if self.current_file is None:
@@ -1272,7 +1403,20 @@ class QDataSet(QWidget, Ui_DataSet):
             return None, None
 
     def do_new(self, line, calculate=True):
-        """Add a new theory of the type specified to the current Data Set"""
+        """Add a new theory of the specified type to the current dataset.
+
+        Similar to new() but with an option to control whether auto-calculation
+        occurs. Returns only the theory object, not the theory_id.
+
+        Args:
+            line: Name of the theory type to create.
+            calculate: If True and theory supports autocalculate, runs calculation
+                immediately. If False, prompts user to press Calculate button.
+
+        Returns:
+            Theory object if successful, or None if theory type doesn't exist
+            or dataset is empty.
+        """
         thtypes = list(self.parent_application.theories.keys())
         if line in thtypes:
             if self.current_file is None:
@@ -1300,7 +1444,17 @@ class QDataSet(QWidget, Ui_DataSet):
             print('Theory "%s" does not exists' % line)
 
     def mincol(self, col):
-        """Minimum value in table column line of all Files in DataSet"""
+        """Find the minimum value in a specific column across all files.
+
+        Iterates through all files in the dataset and finds the overall minimum
+        value in the specified data column.
+
+        Args:
+            col: Column index to search.
+
+        Returns:
+            float: Minimum value found in the specified column across all files.
+        """
         min = 1e100
         for f in self.files:
             minfile = f.mincol(col)
@@ -1309,7 +1463,18 @@ class QDataSet(QWidget, Ui_DataSet):
         return min
 
     def minpositivecol(self, col):
-        """Minimum positive value in table column line of all Files in DataSet"""
+        """Find the minimum positive value in a column across all files.
+
+        Iterates through all files and finds the smallest positive (non-zero,
+        non-negative) value in the specified column. Useful for setting log-scale
+        axis limits.
+
+        Args:
+            col: Column index to search.
+
+        Returns:
+            float: Minimum positive value found in the column across all files.
+        """
         min = 1e100
         for f in self.files:
             minfile = f.minpositivecol(col)
@@ -1318,7 +1483,17 @@ class QDataSet(QWidget, Ui_DataSet):
         return min
 
     def maxcol(self, col):
-        """Maximum value in table column line of all Files in DataSet"""
+        """Find the maximum value in a specific column across all files.
+
+        Iterates through all files in the dataset and finds the overall maximum
+        value in the specified data column.
+
+        Args:
+            col: Column index to search.
+
+        Returns:
+            float: Maximum value found in the specified column across all files.
+        """
         max = -1e100
         for f in self.files:
             maxfile = f.maxcol(col)
@@ -1398,7 +1573,15 @@ class QDataSet(QWidget, Ui_DataSet):
         self.DataSettreeWidget.blockSignals(False)
 
     def theory_actions_disabled(self, state):
-        """Disable theory buttons if no theory tab is open"""
+        """Enable or disable theory-related action buttons.
+
+        Controls the enabled state of all theory toolbar buttons based on
+        whether any theory tabs are open. When no theories are active, all
+        theory actions should be disabled.
+
+        Args:
+            state: True to disable theory buttons, False to enable them.
+        """
         self.actionCalculate_Theory.setDisabled(state)
         self.actionMinimize_Error.setDisabled(state)
         # self.actionTheory_Options.setDisabled(state)
@@ -1424,14 +1607,29 @@ class QDataSet(QWidget, Ui_DataSet):
         self.actionShow_Limits.setIcon(QIcon(":/Images/Images/%s.png" % img))
 
     def set_no_limits(self, th_name):
-        """Turn the x and yrange selectors off"""
+        """Turn off the x-range and y-range limit selectors for a theory.
+
+        Hides both horizontal and vertical range selectors for the specified
+        theory, typically called when switching theories or closing theory tabs.
+
+        Args:
+            th_name: Name of the theory whose limits should be hidden.
+        """
         if th_name in self.theories:
             self.theories[self.current_theory].set_xy_limits_visible(
                 False, False
             )  # hide xrange and yrange
 
     def toggle_vertical_limits(self, checked):
-        """Show/Hide the xrange selector for fit"""
+        """Show or hide the vertical x-range selector for fitting.
+
+        Toggles the visibility of the vertical span selector that allows users
+        to restrict fitting to a specific x-range. Updates the limit icon to
+        reflect the current state.
+
+        Args:
+            checked: True to show the x-range selector, False to hide it.
+        """
         if self.current_theory:
             th = self.theories[self.current_theory]
             th.do_xrange("", checked)
@@ -1439,7 +1637,15 @@ class QDataSet(QWidget, Ui_DataSet):
             self.set_limit_icon()
 
     def toggle_horizontal_limits(self, checked):
-        """Show/Hide the yrange selector for fit"""
+        """Show or hide the horizontal y-range selector for fitting.
+
+        Toggles the visibility of the horizontal span selector that allows users
+        to restrict fitting to a specific y-range. Updates the limit icon to
+        reflect the current state.
+
+        Args:
+            checked: True to show the y-range selector, False to hide it.
+        """
         if self.current_theory:
             th = self.theories[self.current_theory]
             th.do_yrange("", checked)
@@ -1447,6 +1653,13 @@ class QDataSet(QWidget, Ui_DataSet):
             self.set_limit_icon()
 
     def handle_fitting_options(self):
+        """Open and process the fitting options dialog for the current theory.
+
+        Displays a modal dialog allowing users to configure minimization method
+        and parameters (least squares, basin hopping, dual annealing, differential
+        evolution, SHGO, or brute force). Updates the theory's fitting settings
+        based on user selections.
+        """
         if not self.current_theory:
             return
         th = self.theories[self.current_theory]
@@ -1639,6 +1852,12 @@ class QDataSet(QWidget, Ui_DataSet):
         #     th.mintype=MinimizationMethod.trf
 
     def handle_error_calculation_options(self):
+        """Open and process the error calculation options dialog.
+
+        Displays a modal dialog allowing users to configure how fitting error
+        is calculated: using View1 coordinates, raw data, or all views. Also
+        controls whether error is normalized by data values.
+        """
         if not self.current_theory:
             return
         th = self.theories[self.current_theory]
@@ -1659,7 +1878,15 @@ class QDataSet(QWidget, Ui_DataSet):
         th.normalizebydata = th.errorcalculationdialog.ui.NormalizecheckBox.isChecked()
 
     def end_of_computation(self, th_name):
-        """Action when theory has finished computations"""
+        """Handle cleanup when a theory finishes its calculations or fitting.
+
+        Resets the theory's stop flag and restores the Calculate and Fit button
+        icons from "stop" back to their normal state if this is the currently
+        active theory.
+
+        Args:
+            th_name: Name of the theory that finished computing.
+        """
         try:
             th = self.theories[th_name]
             th.stop_theory_flag = False
@@ -1670,6 +1897,13 @@ class QDataSet(QWidget, Ui_DataSet):
             self.icon_fit_is_stop(False)
 
     def handle_actionCalculate_Theory(self):
+        """Handle the Calculate Theory button press.
+
+        Initiates theory calculation for the current theory. If calculation is
+        already running, requests a stop instead. Warns if a single-file theory
+        has multiple active files. Changes the button icon to a stop icon during
+        calculation.
+        """
         if self.current_theory and self.files:
             th = self.theories[self.current_theory]
             if th.thread_calc_busy:  # request stop if in do_calculate
@@ -1715,7 +1949,15 @@ class QDataSet(QWidget, Ui_DataSet):
             th.handle_actionMinimize_Error()
 
     def icon_calculate_is_stop(self, ans):
-        """Change the "calculate" button to "stop" button"""
+        """Change the Calculate button icon between normal and stop states.
+
+        Toggles the Calculate Theory button icon and tooltip between its normal
+        "abacus" icon (for initiating calculation) and a "stop sign" icon (for
+        requesting calculation termination).
+
+        Args:
+            ans: True to show stop icon, False to show calculate icon.
+        """
         if ans:
             self.actionCalculate_Theory.setIcon(
                 QIcon(":/Icon8/Images/new_icons/icons8-stop-sign.png")
@@ -1728,7 +1970,15 @@ class QDataSet(QWidget, Ui_DataSet):
             self.actionCalculate_Theory.setToolTip("Calculate Theory (Alt+C)")
 
     def icon_fit_is_stop(self, ans):
-        """Change the "fit" button to "stop" button"""
+        """Change the Fit button icon between normal and stop states.
+
+        Toggles the Minimize Error button icon and tooltip between its normal
+        "minimum value" icon (for initiating fitting) and a "stop sign" icon
+        (for requesting fit termination).
+
+        Args:
+            ans: True to show stop icon, False to show fit icon.
+        """
         if ans:
             self.actionMinimize_Error.setIcon(
                 QIcon(":/Icon8/Images/new_icons/icons8-stop-sign.png")
@@ -1741,7 +1991,15 @@ class QDataSet(QWidget, Ui_DataSet):
             self.actionCalculate_Theory.setToolTip("Calculate Theory (Alt+C)")
 
     def handle_thCurrentChanged(self, index):
-        """Change figure when the active theory tab is changed"""
+        """Handle switching between theory tabs.
+
+        Updates the current theory, hides all other theory curves, shows the
+        selected theory's curves, and updates button states. If the newly selected
+        theory is running calculations, updates icons accordingly.
+
+        Args:
+            index: Index of the newly selected theory tab.
+        """
         self.icon_calculate_is_stop(False)
         self.icon_fit_is_stop(False)
         th = self.TheorytabWidget.widget(index)
@@ -1766,10 +2024,15 @@ class QDataSet(QWidget, Ui_DataSet):
         self.parent_application.update_Qplot()
 
     def handle_thTabBarDoubleClicked(self, index):
-        """Edit Theory name
+        """Handle double-click on theory tab to rename it.
 
-        Edit the theory tab name, leave 'theories' dictionary keys unchanged.
-        Two tabs can share the same name"""
+        Allows users to edit the theory tab display name via an input dialog.
+        The tab name is purely cosmetic - the underlying theory dictionary key
+        remains unchanged. Multiple tabs can share the same display name.
+
+        Args:
+            index: Index of the double-clicked theory tab.
+        """
         old_name = self.TheorytabWidget.tabText(index)
         dlg = QInputDialog(self)
         dlg.setWindowTitle("Change Theory Name")
@@ -1785,7 +2048,15 @@ class QDataSet(QWidget, Ui_DataSet):
             # self.current_theory = new_tab_name
 
     def handle_thTabCloseRequested(self, index):
-        """Delete a theory tab from the current dataset"""
+        """Handle request to close a theory tab.
+
+        Stops any running computations, hides limit selectors, deletes the theory
+        from the dataset, and removes the tab from the widget. This is triggered
+        when the user clicks the X button on a theory tab.
+
+        Args:
+            index: Index of the theory tab to close.
+        """
         th_name = self.TheorytabWidget.widget(index).name
         th = self.theories[th_name]
         th.Qprint("Close theory tab requested")
@@ -1923,7 +2194,14 @@ class QDataSet(QWidget, Ui_DataSet):
                 self.DataSettreeWidget.topLevelItem(i).setCheckState(0, Qt.Checked)
 
     def resizeEvent(self, evt=None):
-        """Resize dataset"""
+        """Handle widget resize events.
+
+        Redistributes column widths in the dataset tree widget to maintain
+        equal-width columns when the widget is resized.
+
+        Args:
+            evt: Qt resize event object (unused but required by Qt signature).
+        """
         hd = self.DataSettreeWidget.header()
         w = self.DataSettreeWidget.width()
         w /= hd.count()
@@ -2004,7 +2282,23 @@ class QDataSet(QWidget, Ui_DataSet):
         self.actionNew_Theory.setDisabled(False)
 
     def new_theory(self, th_name, th_tab_id="", calculate=True, show=True):
-        """Create a new theory from name"""
+        """Create a new theory and add it as a new tab.
+
+        Creates a theory instance, hides all existing theory curves, adds a new
+        tab for the theory, and optionally calculates and shows it. Enables
+        theory action buttons.
+
+        Args:
+            th_name: Name of the theory type to create.
+            th_tab_id: Custom tab label. If empty, auto-generates from theory name
+                and number.
+            calculate: If True and theory supports autocalculate, runs calculation
+                immediately.
+            show: If True, updates parameter table and shows theory curves.
+
+        Returns:
+            Theory object that was created, or None if no files are loaded.
+        """
         if not self.files:
             return
         if self.current_theory:

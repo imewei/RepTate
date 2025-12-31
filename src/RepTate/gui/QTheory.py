@@ -137,9 +137,19 @@ class MLStripper(HTMLParser):
         self.fed = []
 
     def handle_data(self, d: str) -> None:
+        """Handle parsed data from HTML content.
+
+        Args:
+            d: Parsed text data from HTML content.
+        """
         self.fed.append(d)
 
     def get_data(self) -> str:
+        """Retrieve the accumulated parsed data.
+
+        Returns:
+            str: Concatenated string of all parsed text data with HTML tags removed.
+        """
         return "".join(self.fed)
 
 
@@ -237,7 +247,14 @@ class EditThParametersDialog(QDialog):
         self.setWindowTitle("Theory Parameters")
 
     def create_param_tab(self, p_name):
-        """Create a form to set the new values of the file parameters"""
+        """Create a form to set the new values of the file parameters.
+
+        Args:
+            p_name: Name of the parameter to create a tab for.
+
+        Returns:
+            QWidget: Tab widget containing the parameter editing form.
+        """
         tab = QWidget()
         layout = QFormLayout()
 
@@ -291,20 +308,57 @@ class EditThParametersDialog(QDialog):
 
 
 class CalculationThread(QObject):
+    """Worker thread for executing theory calculations asynchronously.
+
+    This class wraps a calculation function and its arguments to be executed
+    in a separate thread, emitting a signal when complete to avoid blocking
+    the GUI.
+
+    Attributes:
+        sig_done: Signal emitted when the calculation is complete.
+    """
+
     sig_done = Signal()
 
     def __init__(self, fthread, *args):
+        """Initialize the calculation thread.
+
+        Args:
+            fthread: Function to execute in the thread.
+            *args: Variable length argument list to pass to the function.
+        """
         super().__init__()
         self.args = args
         self.function = fthread
 
     def work(self):
+        """Execute the calculation function and emit completion signal.
+
+        This method is called when the thread starts. It executes the stored
+        function with the stored arguments and emits sig_done when complete.
+        """
         self.function(*self.args)
         self.sig_done.emit()
 
 
 class GetModesDialog(QDialog):
+    """Dialog for selecting a theory to extract Maxwell modes from.
+
+    Presents a list of available theories as radio buttons and allows
+    the user to select which theory's Maxwell modes should be retrieved.
+
+    Attributes:
+        btngrp: QButtonGroup containing radio buttons for theory selection.
+    """
+
     def __init__(self, parent=None, th_dict={}):
+        """Initialize the Maxwell modes selection dialog.
+
+        Args:
+            parent: Parent QWidget, defaults to None.
+            th_dict: Dictionary mapping theory names to theory objects.
+                Keys are displayed as selection options.
+        """
         super(GetModesDialog, self).__init__(parent)
 
         self.setWindowTitle("Get Maxwell modes")
@@ -520,10 +574,29 @@ class QTheory(QWidget, Ui_TheoryTab):
         )
 
     def write(self, type, flag):
-        """Write numpy error logs to the logger"""
+        """Write numpy error logs to the logger.
+
+        This is a callback function for numpy's error handling system.
+
+        Args:
+            type: Type of numpy error or warning.
+            flag: Error flag from numpy.
+        """
         self.logger.info("numpy: %s (flag %s)" % (type, flag))
 
     def setup_default_minimization_options(self):
+        """Initialize default options for all minimization methods.
+
+        Sets up default parameters for:
+        - Least-squares (LS) minimization
+        - Basin-hopping global optimization
+        - Dual annealing
+        - Differential evolution
+        - SHGO (simplicial homology global optimization)
+        - Brute force grid search
+
+        These defaults are used when fitting theory parameters to data.
+        """
         # MINIMIZATION OPTIONS
         self.mintype = MinimizationMethod.ls
         self.LSmethod = "trf"
@@ -576,6 +649,14 @@ class QTheory(QWidget, Ui_TheoryTab):
         self.BruteNs = 20
 
     def setup_default_error_calculation_options(self):
+        """Initialize default options for error calculation.
+
+        Sets the default error calculation method to use the first view
+        and disables data normalization. Error can be calculated using:
+        - View1: Current first view transformation
+        - RawData: Untransformed data table
+        - AllViews: All active view transformations
+        """
         self.errormethod = ErrorCalculationMethod.View1
         self.normalizebydata = False
 
@@ -610,7 +691,15 @@ class QTheory(QWidget, Ui_TheoryTab):
         self.stop_theory_flag = True
 
     def do_calculate(self, line, timing=True):
-        """Calculate the theory"""
+        """Calculate the theory for all active files.
+
+        Evaluates the theory function for each active file, optionally extending
+        the x-range if requested, and updates plots and error calculations.
+
+        Args:
+            line: Command line arguments (unused, for compatibility).
+            timing: If True, print calculation time and citations.
+        """
         if self.calculate_is_busy:
             return
         if not self.tables:
@@ -708,6 +797,14 @@ class QTheory(QWidget, Ui_TheoryTab):
             return self.tables[f.file_name_short]
 
     def theory_files(self):
+        """Determine which files should be used for theory calculations.
+
+        For single-file theories, returns the selected active file. For multi-file
+        theories, returns all active files in the dataset.
+
+        Returns:
+            list: List of File objects to use for theory calculations.
+        """
         f_list = []
         if self.single_file:
             selected_file = self.parent_dataset.selected_file
@@ -727,11 +824,18 @@ class QTheory(QWidget, Ui_TheoryTab):
         return f_list
 
     def do_error(self, line):
-        """Report the error of the current theory
+        """Report the error of the current theory.
 
-        Report the error of the current theory on all the files, taking into account the current selected xrange and yrange.
+        Report the error of the current theory on all the files, taking into account
+        the current selected xrange and yrange. File error is calculated as the mean
+        square of the residual, averaged over all points in the file. Total error is
+        the mean square of the residual, averaged over all points in all files.
 
-        File error is calculated as the mean square of the residual, averaged over all points in the file. Total error is the mean square of the residual, averaged over all points in all files.
+        Also displays the Bayesian Information Criterion (BIC) which penalizes
+        overfitting by accounting for the number of free parameters.
+
+        Args:
+            line: Command line arguments (unused, for compatibility).
         """
         total_error = 0
         npoints = 0
@@ -881,6 +985,18 @@ class QTheory(QWidget, Ui_TheoryTab):
             self.Qprint("<b>TOTAL ERROR</b>: %12s (%6d)<br>" % ("N/A", npoints))
 
     def fit_callback_basinhopping(self, x, f, accepted):
+        """Callback function for basin-hopping optimization.
+
+        Reports progress when a new minimum is found and checks for stop requests.
+
+        Args:
+            x: Current parameter values.
+            f: Current function value (residual sum of squares).
+            accepted: Whether the step was accepted.
+
+        Returns:
+            bool: True if computation should stop, False otherwise.
+        """
         if accepted and f < self.fminnow:
             self.fminnow = f
             self.Qprint("nfeval %6d f=%g" % (self.nfev, f))
@@ -888,6 +1004,18 @@ class QTheory(QWidget, Ui_TheoryTab):
             return True
 
     def fit_callback_dualannealing(self, x, f, context):
+        """Callback function for dual annealing optimization.
+
+        Reports progress when a new minimum is found and checks for stop requests.
+
+        Args:
+            x: Current parameter values.
+            f: Current function value (residual sum of squares).
+            context: Optimization context (unused).
+
+        Returns:
+            bool: True if computation should stop, False otherwise.
+        """
         if f < self.fminnow:
             self.fminnow = f
             self.Qprint("nfeval %6d f=%g" % (self.nfev, f))
@@ -895,17 +1023,49 @@ class QTheory(QWidget, Ui_TheoryTab):
             return True
 
     def fit_callback_diffevol(self, xk, convergence):
+        """Callback function for differential evolution optimization.
+
+        Reports progress periodically and checks for stop requests.
+
+        Args:
+            xk: Current parameter values.
+            convergence: Convergence metric (fraction of remaining search space).
+
+        Returns:
+            bool: True if computation should stop, False otherwise.
+        """
         self.Qprint("nfeval %6d frac=%g" % (self.nfev, convergence))
         if self.stop_theory_flag:
             return True
 
     def fit_callback_shgo(self, xk):
+        """Callback function for SHGO optimization.
+
+        Reports progress every 10 function evaluations and checks for stop requests.
+
+        Args:
+            xk: Current parameter values.
+
+        Returns:
+            bool: True if computation should stop, False otherwise.
+        """
         if self.nfev % 10 == 0:
             self.Qprint("nfeval %6d" % self.nfev)
         if self.stop_theory_flag:
             return True
 
     def fit_check_bounds(self, **kwargs):
+        """Check if new parameter values are within allowed bounds.
+
+        Used as a constraint function for basin-hopping to ensure parameters
+        stay within their min/max bounds.
+
+        Args:
+            **kwargs: Keyword arguments containing 'x_new' with new parameter values.
+
+        Returns:
+            bool: True if all parameters are within bounds, False otherwise.
+        """
         x = kwargs["x_new"]
         tmax = bool(np.all(x <= self.param_max))
         tmin = bool(np.all(x >= self.param_min))
@@ -980,7 +1140,19 @@ class QTheory(QWidget, Ui_TheoryTab):
         return y
 
     def do_fit(self, line):
-        """Minimize the error"""
+        """Minimize the error by fitting theory parameters to data.
+
+        Uses the selected minimization method (least-squares, basin-hopping,
+        dual annealing, differential evolution, SHGO, or brute force) to find
+        parameter values that minimize the residual sum of squares between
+        theory predictions and experimental data.
+
+        Respects xrange and yrange limits if set, and can normalize residuals
+        by data values if enabled.
+
+        Args:
+            line: Command line arguments (unused, for compatibility).
+        """
         # Do some initial checks on the status of datasets and theories
         if not self.tables:
             self.is_fitting = False
@@ -1758,6 +1930,15 @@ class QTheory(QWidget, Ui_TheoryTab):
             super(Theory, self).default(line)
 
     def show_theory_extras(self, show):
+        """Show or hide theory-specific extra visual elements.
+
+        This is a hook method that child theory classes can override to control
+        visibility of additional plot elements (e.g., auxiliary lines, markers,
+        or annotations specific to that theory).
+
+        Args:
+            show: If True, show the extra elements; if False, hide them.
+        """
         pass
 
     def do_hide(self, line=""):
@@ -1794,13 +1975,28 @@ class QTheory(QWidget, Ui_TheoryTab):
         self.parent_dataset.do_plot("")
 
     def Qprint(self, msg, end="<br>"):
-        """Print a message on the theory log area or on the terminal"""
+        """Print a message to the theory log area.
 
+        If msg is a list, it is formatted as an HTML table before printing.
+        Otherwise, the message is printed as-is with HTML formatting preserved.
+
+        Args:
+            msg: Message to print (str or list of lists for table data).
+            end: HTML string to append after the message, defaults to "<br>".
+        """
         if isinstance(msg, list):
             msg = self.table_as_html(msg)
         self.print_signal.emit(msg + end)
 
     def table_as_html(self, tab):
+        """Convert a list of lists into an HTML table string.
+
+        Args:
+            tab: List of lists where first row is header and remaining rows are data.
+
+        Returns:
+            str: HTML table string with border and 100% width.
+        """
         header = tab[0]
         rows = tab[1:]
         nrows = len(rows)
@@ -1819,6 +2015,14 @@ class QTheory(QWidget, Ui_TheoryTab):
         return table
 
     def table_as_ascii(self, tab):
+        """Convert a list of lists into an ASCII table string.
+
+        Args:
+            tab: List of lists representing table rows.
+
+        Returns:
+            str: Space-separated table with newlines between rows.
+        """
         text = ""
         for row in tab:
             text += " ".join(row)
@@ -1826,6 +2030,14 @@ class QTheory(QWidget, Ui_TheoryTab):
         return text
 
     def strip_tags(self, html_text):
+        """Remove HTML tags from text.
+
+        Args:
+            html_text: String containing HTML markup.
+
+        Returns:
+            str: Plain text with all HTML tags removed.
+        """
         s = MLStripper()
         s.feed(html_text)
         return s.get_data()
@@ -1855,6 +2067,13 @@ class QTheory(QWidget, Ui_TheoryTab):
         return True
 
     def populate_default_minimization_options(self):
+        """Populate the minimization options dialog with default values.
+
+        Sets up validators and populates all fields in the fitting options dialog
+        with the current values of minimization parameters for all supported
+        optimization methods (least-squares, basin-hopping, dual annealing,
+        differential evolution, SHGO, and brute force).
+        """
         dvalidator = QDoubleValidator()
         ivalidator = QIntValidator()
         # LEAST-SQUARES LOCAL MIN
@@ -1984,6 +2203,12 @@ class QTheory(QWidget, Ui_TheoryTab):
         self.fittingoptionsdialog.ui.BruteNslineEdit.setText("%d" % self.BruteNs)
 
     def populate_default_error_calculation_options(self):
+        """Populate the error calculation options dialog with current values.
+
+        Sets radio buttons and checkboxes in the error calculation dialog
+        to reflect the current error calculation method (View1, RawData, or
+        AllViews) and data normalization settings.
+        """
         # ERROR CALCULATION METHOD
         if self.errormethod == ErrorCalculationMethod.View1:
             self.errorcalculationdialog.ui.View1radioButton.setChecked(True)
@@ -2031,6 +2256,12 @@ class QTheory(QWidget, Ui_TheoryTab):
         pass
 
     def handle_actionCalculate_Theory(self):
+        """Handle the calculate theory action.
+
+        Creates a worker thread (in multithread mode) or calls do_calculate directly
+        (in singlethread mode) to perform theory calculations without blocking the GUI.
+        Disables relevant UI buttons during calculation.
+        """
         if self.thread_calc_busy:
             return
         self.thread_calc_busy = True
@@ -2055,6 +2286,12 @@ class QTheory(QWidget, Ui_TheoryTab):
             self.end_thread_calc()
 
     def end_thread_calc(self):
+        """Clean up after theory calculation completes.
+
+        Terminates the calculation thread (if in multithread mode), updates
+        the parameter table and plots, re-enables UI buttons, and notifies
+        the dataset that computation is complete.
+        """
         if CmdBase.calcmode == CalcMode.multithread:
             try:
                 self.thread_calc.quit()
@@ -2104,6 +2341,12 @@ class QTheory(QWidget, Ui_TheoryTab):
             self.end_thread_fit()
 
     def end_thread_fit(self):
+        """Clean up after parameter fitting completes.
+
+        Terminates the fitting thread (if in multithread mode), updates
+        the parameter table and plots, re-enables UI buttons, and notifies
+        the dataset that computation is complete.
+        """
         if CmdBase.calcmode == CalcMode.multithread:
             try:
                 self.thread_fit.quit()
@@ -2118,6 +2361,12 @@ class QTheory(QWidget, Ui_TheoryTab):
         self.parent_dataset.end_of_computation(self.name)
 
     def copy_parameters(self):
+        """Copy theory parameters to clipboard as tab-separated text.
+
+        Creates a tab-separated list of parameter names and values and
+        copies it to the system clipboard. Each parameter is on a new line
+        in the format: "name<tab>value".
+        """
         text = ""
         for param in self.parameters:
             p = self.parameters[param]
@@ -2125,6 +2374,13 @@ class QTheory(QWidget, Ui_TheoryTab):
         QApplication.clipboard().setText(text)
 
     def paste_parameters(self):
+        """Paste theory parameters from clipboard.
+
+        Reads tab-separated or space-separated parameter data from the clipboard
+        and updates matching parameters. Each line should contain a parameter
+        name and value. After pasting, updates the parameter table and triggers
+        recalculation if autocalculate is enabled.
+        """
         text = QApplication.clipboard().text()
         if text == "":
             return

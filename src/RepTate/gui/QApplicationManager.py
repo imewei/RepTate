@@ -93,6 +93,16 @@ Ui_MainWindow, QMainWindow = loadUiType(join(PATH, "ReptateMainWindow.ui"))
 
 
 class QTextEditLogger(logging.Handler):
+    """Custom logging handler that displays log messages in a Qt text browser widget.
+
+    This handler formats log messages with HTML styling and displays them in a read-only
+    text browser with a light yellow background. Messages are automatically scrolled to
+    keep the most recent entries visible.
+
+    Attributes:
+        widget (QTextBrowser): The Qt text browser widget that displays log messages.
+    """
+
     def __init__(self, parent):
         super().__init__()
         # self.widget = QPlainTextEdit(parent)
@@ -101,6 +111,15 @@ class QTextEditLogger(logging.Handler):
         self.widget.setStyleSheet("background-color: rgb(255, 255, 222);")
 
     def emit(self, record):
+        """Emit a log record by formatting and displaying it in the text browser.
+
+        This method is called by the logging system when a log message is generated.
+        The message is formatted as HTML, appended to the widget, and the view is
+        automatically scrolled to show the new message.
+
+        Args:
+            record (logging.LogRecord): The log record containing the message and metadata.
+        """
         msg = self.format(record)
         # self.widget.appendPlainText(msg)
 
@@ -371,47 +390,99 @@ class QApplicationManager(QMainWindow, Ui_MainWindow):
         self.LoggerdockWidget.hide()
 
     def showLogger(self, checked):
-        """Handle show Log window"""
+        """Handle show Log window.
+
+        Args:
+            checked (bool): True to show the logger window, False to hide it.
+        """
         if checked:
             self.LoggerdockWidget.show()
         else:
             self.LoggerdockWidget.hide()
 
     def handle_loggerVisibilityChanged(self, visible):
-        """Handle the hide/show event of the logger window"""
+        """Handle the hide/show event of the logger window.
+
+        This slot is triggered when the logger dock widget's visibility changes,
+        and synchronizes the toolbar action's checked state with the widget visibility.
+
+        Args:
+            visible (bool): True if the logger window is visible, False otherwise.
+        """
         self.actionShow_Logger.setChecked(visible)
 
     def logNotSet(self):
+        """Set logging level to NOTSET (all messages logged).
+
+        Changes both the RepTate logger and the log text box to NOTSET level,
+        which allows all log messages to be displayed regardless of severity.
+        Updates the toolbar button to reflect the current logging level.
+        """
         logging.getLogger("RepTate").setLevel(logging.NOTSET)
         self.logTextBox.setLevel(logging.NOTSET)
         self.tbutlog.setDefaultAction(self.actionLogNotSet)
 
     def logDebug(self):
+        """Set logging level to DEBUG.
+
+        Changes both the RepTate logger and the log text box to DEBUG level,
+        which displays detailed diagnostic information useful for debugging.
+        Updates the toolbar button to reflect the current logging level.
+        """
         logging.getLogger("RepTate").setLevel(logging.DEBUG)
         self.logTextBox.setLevel(logging.DEBUG)
         self.tbutlog.setDefaultAction(self.actionLogDebug)
 
     def logInfo(self):
+        """Set logging level to INFO.
+
+        Changes both the RepTate logger and the log text box to INFO level,
+        which displays general informational messages about program execution.
+        Updates the toolbar button to reflect the current logging level.
+        """
         logging.getLogger("RepTate").setLevel(logging.INFO)
         self.logTextBox.setLevel(logging.INFO)
         self.tbutlog.setDefaultAction(self.actionLogInfo)
 
     def logWarning(self):
+        """Set logging level to WARNING.
+
+        Changes both the RepTate logger and the log text box to WARNING level,
+        which displays warning messages about potentially problematic situations.
+        Updates the toolbar button to reflect the current logging level.
+        """
         logging.getLogger("RepTate").setLevel(logging.WARNING)
         self.logTextBox.setLevel(logging.WARNING)
         self.tbutlog.setDefaultAction(self.actionLogWarning)
 
     def logError(self):
+        """Set logging level to ERROR.
+
+        Changes both the RepTate logger and the log text box to ERROR level,
+        which displays only error messages indicating serious problems.
+        Updates the toolbar button to reflect the current logging level.
+        """
         logging.getLogger("RepTate").setLevel(logging.ERROR)
         self.logTextBox.setLevel(logging.ERROR)
         self.tbutlog.setDefaultAction(self.actionLogError)
 
     def logCritical(self):
+        """Set logging level to CRITICAL.
+
+        Changes both the RepTate logger and the log text box to CRITICAL level,
+        which displays only critical error messages indicating imminent failures.
+        Updates the toolbar button to reflect the current logging level.
+        """
         logging.getLogger("RepTate").setLevel(logging.CRITICAL)
         self.logTextBox.setLevel(logging.CRITICAL)
         self.tbutlog.setDefaultAction(self.actionLogCritical)
 
     def copyLogText(self):
+        """Copy all log text to the system clipboard.
+
+        Selects all text in the log widget and copies it to the clipboard,
+        allowing users to paste the log contents into other applications.
+        """
         self.logTextBox.widget.selectAll()
         self.logTextBox.widget.copy()
 
@@ -450,6 +521,11 @@ class QApplicationManager(QMainWindow, Ui_MainWindow):
         QDesktopServices.openUrl(QUrl.fromUserInput((html_help_file)))
 
     def handle_actionShow_offline_help(self):
+        """Show offline RepTate documentation in the default web browser.
+
+        Opens the locally built HTML documentation from the RepTate docs directory.
+        This provides access to documentation without requiring an internet connection.
+        """
         PATH = join(RepTate.root_dir, "docs", "build", "html", "index.html")
         QDesktopServices.openUrl(QUrl.fromLocalFile(PATH))
 
@@ -474,6 +550,17 @@ class QApplicationManager(QMainWindow, Ui_MainWindow):
         )
 
     def check_version(self):
+        """Check if a newer version of RepTate is available on GitHub.
+
+        Queries the GitHub API for the latest RepTate release and compares it
+        with the currently running version.
+
+        Returns:
+            tuple: A tuple containing three elements:
+                - newversion (bool): True if GitHub version is newer than current version.
+                - version_github (str): The latest version tag from GitHub.
+                - version_current (str): The current running version of RepTate.
+        """
         url = "https://api.github.com/repos/jorge-ramirez-upm/RepTate/releases"
         releasedata = (urlopen(url).read()).decode("UTF-8")
         parsed_json = json.loads(releasedata)
@@ -516,9 +603,23 @@ class QApplicationManager(QMainWindow, Ui_MainWindow):
             )
 
     def list_theories_Maxwell(self, th_exclude=None):
-        """Redefinition for the GUI mode that lists the tab names.
-        List the theories in the current RepTate instance that provide and need
-        Maxwell modes"""
+        """List theories that provide and need Maxwell modes, with GUI tab names.
+
+        Redefinition for the GUI mode that lists the tab names. Scans all applications,
+        datasets, and theories to find those that support Maxwell mode operations.
+
+        Args:
+            th_exclude (Theory, optional): Theory instance to exclude from the list.
+                Defaults to None.
+
+        Returns:
+            tuple: A tuple containing two dictionaries:
+                - get_dict (dict): Maps tab paths to get_modes methods for theories
+                    that provide Maxwell modes.
+                - set_dict (dict): Maps tab paths to set_modes methods for theories
+                    that can receive Maxwell modes.
+                Keys are formatted as "AppTab.DatasetTab.TheoryTab".
+        """
         get_dict = {}
         set_dict = {}
         for app in self.applications.values():
@@ -540,7 +641,15 @@ class QApplicationManager(QMainWindow, Ui_MainWindow):
         return get_dict, set_dict
 
     def handle_doubleClickTab(self, index):
-        """Edit Application name, tab only, the dictinary key remains unchanged"""
+        """Edit Application tab name when user double-clicks on it.
+
+        Displays a dialog allowing the user to rename the application tab.
+        Note that only the tab display name is changed; the dictionary key
+        for the application remains unchanged.
+
+        Args:
+            index (int): The index of the tab that was double-clicked.
+        """
         old_name = self.ApplicationtabWidget.tabText(index)
         dlg = QInputDialog(self)
         dlg.setWindowTitle("Change Application Name")
@@ -568,14 +677,29 @@ class QApplicationManager(QMainWindow, Ui_MainWindow):
         dlg.show()
 
     def tab_changed(self, index):
-        """Capture when the active application has changed"""
+        """Capture when the active application has changed.
+
+        This slot is triggered when the user switches between application tabs.
+        Currently a placeholder for future functionality.
+
+        Args:
+            index (int): The index of the newly active tab.
+        """
         # appname = self.ApplicationtabWidget.widget(index).windowTitle
         # items = self.Projecttree.findItems(appname, Qt.MatchContains)
         # self.Projecttree.setCurrentItem(items[0])
         pass
 
     def close_app_tab(self, index):
-        """Close an app"""
+        """Close an application tab and clean up its resources.
+
+        Removes the application tab, deletes all datasets within the application
+        (which triggers theory destructors), and removes the application from
+        the internal dictionary.
+
+        Args:
+            index (int): The index of the application tab to close.
+        """
         app = self.ApplicationtabWidget.widget(index)
         ds_name_list = [key for key in app.datasets]
         for ds_name in ds_name_list:
@@ -584,7 +708,15 @@ class QApplicationManager(QMainWindow, Ui_MainWindow):
         self.delete(app.name)
 
     def delete(self, name):
-        """Delete an open application"""
+        """Delete an open application by name.
+
+        Removes the application from the internal dictionary and cleans up
+        its multiplot window if present. Prints an error message if the
+        application is not found.
+
+        Args:
+            name (str): The name of the application to delete.
+        """
         if name in self.applications.keys():
             self.applications[name].delete_multiplot()
             del self.applications[name]
@@ -594,8 +726,13 @@ class QApplicationManager(QMainWindow, Ui_MainWindow):
     def new(self, appname):
         """Create a new application and open it.
 
-        Arguments:
-            - name {str} -- Application to open (MWD, LVE, TTS, etc)"""
+        Args:
+            appname (str): Application type to open (MWD, LVE, TTS, etc).
+
+        Returns:
+            Application or None: The newly created application instance, or None if
+                the application type is not available.
+        """
         if appname in self.available_applications:
             self.application_counter += 1
             newapp = self.available_applications[appname](
@@ -608,7 +745,18 @@ class QApplicationManager(QMainWindow, Ui_MainWindow):
             return None
 
     def Qopen_app(self, app_name, icon):
-        """Open app"""
+        """Open a new application with GUI tab and icon.
+
+        Creates a new application instance, populates it with an empty dataset,
+        adds a tab to the application tab widget, and sets the tab as active.
+
+        Args:
+            app_name (str): Application type to open (MWD, LVE, TTS, etc).
+            icon (str): Path to the icon file for the application tab.
+
+        Returns:
+            Application: The newly created and opened application instance.
+        """
         newapp = self.new(app_name)
         newapp.createNew_Empty_Dataset()  # populate with empty dataset at app opening
         app_tabname = "%s%d" % (app_name, self.application_counter)
@@ -618,11 +766,27 @@ class QApplicationManager(QMainWindow, Ui_MainWindow):
         return newapp
 
     def handle_new_app(self, app_name=""):
-        """Open a new application window from name"""
+        """Open a new application window from name.
+
+        This is the slot called when the user clicks on an application button
+        in the toolbar. It opens the requested application with the default icon.
+
+        Args:
+            app_name (str): Application type to open (MWD, LVE, TTS, etc).
+                Defaults to empty string.
+        """
         self.Qopen_app(app_name, ":/Icons/Images/new_icons/%s.png" % app_name)
 
     def handle_app_coming_soon(self, appname=""):
-        """Show message"""
+        """Show a message that an application is coming soon.
+
+        Displays a warning dialog to inform the user that the requested
+        application is under development and not yet available.
+
+        Args:
+            appname (str): Name of the application that is not yet available.
+                Defaults to empty string.
+        """
         QMessageBox.warning(
             self, "new %s application" % appname, "%s coming soon..." % appname
         )
@@ -632,7 +796,15 @@ class QApplicationManager(QMainWindow, Ui_MainWindow):
     ############################
 
     def closeEvent(self, event):
-        """Ask if we want to save project before closing RepTate (uncomment the rest)"""
+        """Handle the window close event.
+
+        Currently allows closing without confirmation. The commented code shows
+        how to prompt the user to save their project before exiting.
+
+        Args:
+            event (QCloseEvent): The close event triggered when the user attempts
+                to close the main window.
+        """
         pass
         # btns = (QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel)
         # msg = 'Do you want to save your project before exiting RepTate?'
@@ -665,7 +837,16 @@ class QApplicationManager(QMainWindow, Ui_MainWindow):
         self.open_project(fpath)
 
     def launch_save_dialog(self):
-        """Get filename of RepTate project to save"""
+        """Get filename of RepTate project to save.
+
+        Opens a file dialog for the user to select where to save the project.
+        If a project has been previously loaded or saved, uses that directory
+        as the default location. Otherwise, defaults to the RepTate data directory.
+
+        Returns:
+            bool: True if the project was successfully saved, False if the user
+                cancelled the dialog.
+        """
         if self.load_path:
             fpath, _ = QFileDialog.getSaveFileName(
                 self, "Save RepTate Project", self.load_path, "RepTate Project (*.rept)"
@@ -965,7 +1146,21 @@ class QApplicationManager(QMainWindow, Ui_MainWindow):
     ############################
 
     def restore_app(self, app_name, app_tabname):
-        """Open new application"""
+        """Open new application when restoring from a saved project.
+
+        Creates a new application instance and adds it to the tab widget with
+        the specified tab name. This is used during project loading to recreate
+        applications with their saved names rather than auto-generated ones.
+
+        Args:
+            app_name (str): Application type to restore (MWD, LVE, TTS, etc).
+            app_tabname (str): The saved name to use for the application tab.
+
+        Returns:
+            tuple: A tuple containing:
+                - app (Application): The restored application widget.
+                - ind (int): The index of the newly added tab.
+        """
         newapp = self.new(app_name)
         icon = QIcon(":/Icons/Images/new_icons/%s.png" % app_name)
         ind = self.ApplicationtabWidget.addTab(newapp, icon, app_tabname)
@@ -1052,7 +1247,16 @@ class QApplicationManager(QMainWindow, Ui_MainWindow):
             new_th.autocalculate = autocal
 
     def restore_marker_settings(self, ds, marker_dic):
-        """Restore the dataset marker settings"""
+        """Restore the dataset marker and line style settings.
+
+        Applies saved visual settings for data markers, lines, colors, and theory
+        plotting styles to a dataset being restored from a project file.
+
+        Args:
+            ds (DataSet): The dataset to apply marker settings to.
+            marker_dic (dict): Dictionary containing saved marker settings including
+                marker_size, line_width, colormode, colors, symbols, and theory styles.
+        """
         ds.marker_size = marker_dic["marker_size"]
         ds.line_width = marker_dic["line_width"]
         ds.colormode = marker_dic["colormode"]
@@ -1098,7 +1302,15 @@ class QApplicationManager(QMainWindow, Ui_MainWindow):
             )
 
     def open_project(self, project_path):
-        """Open file and load project"""
+        """Open file and load a saved RepTate project.
+
+        Reads a .rept project file (which is a zip archive containing JSON),
+        extracts all saved applications, datasets, theories, tools, and settings,
+        and recreates the complete project state in the GUI.
+
+        Args:
+            project_path (str): Path to the .rept project file to open.
+        """
         import json, zipfile, tempfile
 
         if not isfile(project_path):

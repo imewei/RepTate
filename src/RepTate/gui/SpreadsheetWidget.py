@@ -55,7 +55,18 @@ class SpreadsheetWidget(QTableWidget):
         file_repr = None  # store the file object represented in the table
 
     def keyPressEvent(self, event):
-        """Catch key"""
+        """Process keyboard events for copy/paste/delete operations.
+
+        Intercepts standard keyboard shortcuts to provide spreadsheet-like functionality:
+            - Ctrl+C (Cmd+C on Mac): Copy selected cells to clipboard
+            - Ctrl+V (Cmd+V on Mac): Paste clipboard data into cells
+            - Backspace/Delete: Delete selected rows (if enabled)
+
+        Other key events are passed to the parent class for normal processing.
+
+        Args:
+            event: QKeyEvent containing key press information (key code, modifiers, text).
+        """
         if event.matches(QKeySequence.Copy):
             self.copy()
         elif event.matches(QKeySequence.Paste):
@@ -66,6 +77,18 @@ class SpreadsheetWidget(QTableWidget):
             QTableWidget.keyPressEvent(self, event)
 
     def delete(self):
+        """Delete selected rows from the spreadsheet.
+
+        Removes entire rows that contain any selected cells from the underlying data
+        table. After deletion, updates the inspector view and redraws the plot. This
+        operation is only performed if delete_disabled is False.
+
+        The method:
+            - Collects unique row indices from all selected cells
+            - Removes those rows from the data_table.data array
+            - Updates the row count
+            - Refreshes the inspector and plot
+        """
         if self.delete_disabled:
             pass
         else:

@@ -130,6 +130,16 @@ Ui_AddDummyFiles, QDialog = loadUiType(join(PATH, "dummyfilesDialog.ui"))
 
 
 class AddDummyFiles(QDialog, Ui_AddDummyFiles):
+    """Dialog for generating dummy data files with parameterized values.
+
+    This dialog allows users to create synthetic data files by specifying parameter ranges
+    and distributions (linear or logarithmic). Each file type parameter can be configured
+    with minimum, maximum, and number of steps.
+
+    Attributes:
+        parameterTreeWidget: Tree widget displaying editable file parameters with their
+            ranges and distribution types.
+    """
     def __init__(self, parent=None, filetype=None):
         super(AddDummyFiles, self).__init__(parent)
         # QDialog.__init__(self)
@@ -153,11 +163,36 @@ class AddDummyFiles(QDialog, Ui_AddDummyFiles):
         )
 
     def handle_itemDoubleClicked(self, item, column):
+        """Handle double-click events on parameter tree items to enable editing.
+
+        Enables in-place editing for columns 1-3 (min, max, and steps values)
+        when the user double-clicks on them.
+
+        Args:
+            item: The QTreeWidgetItem that was double-clicked.
+            column: Column index (0=parameter name, 1=min, 2=max, 3=steps, 4=scale type).
+        """
         if column > 0 and column < 4:
             self.parameterTreeWidget.editItem(item, column)
 
 
 class AddFileFunction(QDialog):
+    """Dialog for creating new data files from mathematical functions.
+
+    This dialog allows users to generate synthetic data files by defining mathematical
+    expressions for each column as a function of a variable 'x'. Users can set file
+    parameters, define column expressions, and configure the range of the independent
+    variable.
+
+    Attributes:
+        filetype: The FileType instance defining the structure of the file to create.
+        parametersGroupBox: QGroupBox containing input fields for file parameters.
+        columnsGroupBox: QGroupBox containing expression fields for each data column.
+        labelGroupBox: QGroupBox containing range and scale settings for variable x.
+        param_dict: Dictionary mapping parameter names to their QLineEdit widgets.
+        col_dict: Dictionary mapping column names to their QLineEdit expression widgets.
+        lab_dict: Dictionary mapping label settings (xmin, xmax, npoints) to widgets.
+    """
     def __init__(self, parent=None, filetype=None):
         super(AddFileFunction, self).__init__(parent)
         QDialog.__init__(self)
@@ -237,6 +272,16 @@ class AddFileFunction(QDialog):
 
 
 class EditAnnotation(QDialog, Ui_EditAnnotation):
+    """Dialog for editing matplotlib annotation properties.
+
+    This dialog provides a comprehensive interface for modifying all properties of
+    a matplotlib annotation, including text content, position, color, rotation,
+    alignment, font properties, and transparency.
+
+    Attributes:
+        annotation: The matplotlib Annotation object being edited.
+        color: QColor object storing the currently selected font color.
+    """
     def __init__(self, parent=None, annotation=None):
         super(EditAnnotation, self).__init__(parent)
         QDialog.__init__(self)
@@ -279,6 +324,11 @@ class EditAnnotation(QDialog, Ui_EditAnnotation):
         return color
 
     def apply_changes(self):
+        """Apply all changes from the dialog to the annotation and redraw the canvas.
+
+        This method reads all values from the dialog's input fields and applies them
+        to the matplotlib annotation object. The canvas is redrawn to reflect the changes.
+        """
         self.annotation.set_text(self.textLineEdit.text())
         self.annotation.set_position(
             (float(self.xLineEdit.text()), float(self.yLineEdit.text()))
@@ -296,6 +346,11 @@ class EditAnnotation(QDialog, Ui_EditAnnotation):
         self.annotation.figure.canvas.draw()
 
     def delete(self):
+        """Delete the annotation after user confirmation.
+
+        Displays a confirmation dialog before removing the annotation from the figure.
+        If the user confirms, the annotation is removed and the dialog is closed.
+        """
         btns = QMessageBox.Yes | QMessageBox.No
         msg = (
             'Do you want to delete the the annotation "%s"' % self.annotation.get_text()
@@ -316,6 +371,16 @@ class EditAnnotation(QDialog, Ui_EditAnnotation):
 
 
 class ViewShiftFactors(QDialog):
+    """Dialog for viewing and editing shift factors for time-temperature superposition.
+
+    This dialog displays a table showing the horizontal (x) and vertical (y) shift factors
+    for each file in a dataset. Users can view and edit these factors, which are commonly
+    used in rheological data analysis for time-temperature superposition.
+
+    Attributes:
+        table: SpreadsheetWidget displaying shift factors in an editable table format.
+            Columns are organized as pairs (x1, y1, x2, y2, ...) for each curve.
+    """
     def __init__(self, parent=None, fnames=None, factorsx=None, factorsy=None):
         super(ViewShiftFactors, self).__init__(parent)
 
@@ -906,6 +971,12 @@ class QApplicationWindow(QMainWindow, Ui_AppWindow):
         self.multiplots.reorg_fig(new_nplots)
 
     def save_view(self):
+        """Save data from all active files in the current view to text files.
+
+        Prompts the user to select a folder, then saves all active files from the current
+        dataset. Each view's data is saved in column format with appropriate headers.
+        Output files are named with the original filename and a '_view' suffix.
+        """
         dir_start = self.dir_start
         dilogue_name = "Select Folder for Saving data in Current View as txt"
         folder = QFileDialog.getExistingDirectory(self, dilogue_name, dir_start)
@@ -1069,10 +1140,24 @@ class QApplicationWindow(QMainWindow, Ui_AppWindow):
         self.update_all_ds_plots()
 
     def handle_toolTabMoved(self, f, t):
+        """Handle reordering of tool tabs and update plots accordingly.
+
+        Args:
+            f: The index where the tab was moved from.
+            t: The index where the tab was moved to.
+        """
         self.tools.insert(f, self.tools.pop(t))
         self.update_all_ds_plots()
 
     def handle_actionAutoscale(self, checked):
+        """Toggle autoscale mode and update the action icon.
+
+        When autoscale is enabled, plot axes automatically adjust to fit data.
+        When disabled (locked), axis limits remain fixed during data changes.
+
+        Args:
+            checked: Boolean indicating whether the action is checked.
+        """
         self.autoscale = not checked
         if self.autoscale:
             self.actionAutoscale.setIcon(
@@ -1102,6 +1187,19 @@ class QApplicationWindow(QMainWindow, Ui_AppWindow):
     def add_annotation(
         self, action_trig=False, text=None, x=0, y=0, annotation_opts={}
     ):
+        """Add a text annotation to the current plot.
+
+        Creates a draggable annotation on the current plot axes. If called without text
+        (user-initiated), displays an input dialog. If called with text (programmatic),
+        creates the annotation directly at the specified position.
+
+        Args:
+            action_trig: Boolean indicating if triggered by user action (unused).
+            text: Optional annotation text. If None, prompts user for input.
+            x: X-coordinate for annotation position (used when text is provided).
+            y: Y-coordinate for annotation position (used when text is provided).
+            annotation_opts: Dictionary of matplotlib annotation options.
+        """
         if self.current_viewtab == 0:
             ax = self.axarr[0]
         else:
@@ -1138,11 +1236,23 @@ class QApplicationWindow(QMainWindow, Ui_AppWindow):
             self.canvas.draw()
 
     def edit_annotation(self, artist):
+        """Open the annotation editing dialog for a given annotation artist.
+
+        Args:
+            artist: The matplotlib Annotation object to edit.
+        """
         d = EditAnnotation(self, artist)
         d.exec_()
         self.canvas.draw()
 
     def update_legend(self):
+        """Update or remove the plot legend based on current settings.
+
+        Creates or updates the legend on the current plot axes using the legend label
+        template and file parameters. If the legend is disabled or no dataset is active,
+        removes any existing legend. Legend labels support parameter substitution using
+        the format [parameter_name].
+        """
         if self.current_viewtab == 0:
             ax = self.axarr[0]
         else:
@@ -1304,6 +1414,11 @@ class QApplicationWindow(QMainWindow, Ui_AppWindow):
             self.ax_opts["color_label"] = color.getRgbF()
 
     def handle_reset_all_pb(self):
+        """Reset all axis and marker settings to their default values.
+
+        Restores default values for font properties, colors, axis thickness, grid,
+        and other plot appearance settings, then updates the settings dialog.
+        """
         self.ax_opts = self.ax_opt_defaults.copy()
         self.set_axis_marker_settings()
 
@@ -1481,6 +1596,11 @@ class QApplicationWindow(QMainWindow, Ui_AppWindow):
             ds.do_plot()
 
     def set_axis_marker_settings(self):
+        """Update the marker settings dialog with current axis options.
+
+        Synchronizes all UI elements in the marker settings dialog with the current
+        values stored in self.ax_opts, including colors, fonts, sizes, and grid settings.
+        """
         col = QColor(
             self.ax_opts["color_label"][0] * 255,
             self.ax_opts["color_label"][1] * 255,
@@ -1571,6 +1691,14 @@ class QApplicationWindow(QMainWindow, Ui_AppWindow):
         self.multiplots.handle_plottabChanged(self.current_viewtab)
 
     def zoom_wheel(self, event):
+        """Handle mouse wheel zoom events on the plot.
+
+        Zooms in or out centered on the cursor position. Scroll up zooms in (scale factor 1/1.1),
+        scroll down zooms out (scale factor 1.1). Updates all axes that contain the event.
+
+        Args:
+            event: Matplotlib scroll_event containing button ('up' or 'down'), x, y position.
+        """
         base_scale = 1.1
         if event.button == "up":
             # deal with zoom in
@@ -1680,6 +1808,14 @@ class QApplicationWindow(QMainWindow, Ui_AppWindow):
             return new_max, new_min
 
     def on_press(self, event):
+        """Handle mouse button press events for pan and zoom interactions.
+
+        Initiates panning with middle mouse button (button 2) or area zoom with
+        right mouse button (button 3). Stores the axes and button for motion handling.
+
+        Args:
+            event: Matplotlib button_press_event containing button number and position.
+        """
         if event.button == 2:  # Pan
             x_axes, y_axes = self._axes_to_update(event)
             if x_axes or y_axes:
@@ -1694,6 +1830,14 @@ class QApplicationWindow(QMainWindow, Ui_AppWindow):
                 self._zoom_area(event)
 
     def on_motion(self, event):
+        """Handle mouse motion events during pan or area zoom operations.
+
+        Continues the pan or zoom operation initiated by on_press while the mouse moves
+        with the button held down.
+
+        Args:
+            event: Matplotlib motion_notify_event containing current mouse position.
+        """
         if self._pressed_button == 2:  # pan
             self._pan(event)
         elif self._pressed_button == 3:  # zoom area
@@ -2297,6 +2441,12 @@ class QApplicationWindow(QMainWindow, Ui_AppWindow):
             self.disconnect_curve_drag()
 
     def handle_actionViewShiftTriggered(self):
+        """Open dialog to view and edit shift factors for the current dataset.
+
+        Displays the ViewShiftFactors dialog showing horizontal and vertical shift factors
+        for all files in the current dataset. If the user accepts the dialog, updates
+        the shift factors with the edited values.
+        """
         ds = self.DataSettabWidget.currentWidget()
         if ds is None:
             return
@@ -2314,6 +2464,13 @@ class QApplicationWindow(QMainWindow, Ui_AppWindow):
                     f.yshift[j] = float(d.table.item(i, 2 * j + 1).text())
 
     def handle_actionSaveShiftTriggered(self):
+        """Save shift factors of the current dataset to a text file.
+
+        Prompts the user to select a folder, then saves a 'Shift_Factors.txt' file
+        containing file parameters and shift factors for all active files. The file
+        includes both basic file parameters and horizontal/vertical shift values for
+        each curve.
+        """
         ds = self.DataSettabWidget.currentWidget()
         if ds is None:
             return
@@ -2345,6 +2502,12 @@ class QApplicationWindow(QMainWindow, Ui_AppWindow):
                         fout.write("\n")
 
     def handle_actionResetShiftTriggered(self):
+        """Reset all shift factors in the current dataset to zero.
+
+        Clears horizontal and vertical shift factors for all files in the dataset,
+        resets the shifted status flags, updates the plot, and resets the shift table
+        display to show zeros.
+        """
         ds = self.DataSettabWidget.currentWidget()
         if ds is None:
             return
@@ -2404,6 +2567,17 @@ class QApplicationWindow(QMainWindow, Ui_AppWindow):
             self.curves.append(cur)
 
     def update_shifts(self, dx, dy, index):
+        """Update the shift table display during interactive dragging.
+
+        Updates the shift table cells to show the cumulative shift values as the user
+        drags a curve. This provides real-time feedback without modifying the actual
+        file shift values until the drag is complete.
+
+        Args:
+            dx: Horizontal shift delta from the drag operation.
+            dy: Vertical shift delta from the drag operation.
+            index: Index of the curve being shifted.
+        """
         ds = self.DataSettabWidget.currentWidget()
         if not ds.selected_file:
             return
@@ -2413,6 +2587,16 @@ class QApplicationWindow(QMainWindow, Ui_AppWindow):
         item.setText("%g" % (ds.selected_file.yshift[index] + dy))
 
     def finish_shifts(self, dx, dy, index):
+        """Apply final shift values when a drag operation completes.
+
+        Updates the selected file's shift factors with the cumulative shift values
+        from the drag operation and marks the curve as shifted.
+
+        Args:
+            dx: Total horizontal shift from the drag operation.
+            dy: Total vertical shift from the drag operation.
+            index: Index of the curve that was shifted.
+        """
         ds = self.DataSettabWidget.currentWidget()
         if not ds.selected_file:
             return
@@ -2461,6 +2645,14 @@ class QApplicationWindow(QMainWindow, Ui_AppWindow):
             ds.do_save(folder, txt)
 
     def handle_actionView_All_SetTheories(self, checked):
+        """Show all theories for all datasets in the current dataset.
+
+        Iterates through all theories in the current dataset and calls their do_show()
+        method to display them on the plot.
+
+        Args:
+            checked: Boolean indicating whether the action is checked (unused).
+        """
         ds = self.DataSettabWidget.currentWidget()
         if ds:
             for th in ds.theories.values():
@@ -2536,6 +2728,10 @@ class QApplicationWindow(QMainWindow, Ui_AppWindow):
         self.update_legend()
 
     def handle_change_view(self):
+        """Handle view change events from the view combo box.
+
+        Delegates to the change_view() method to perform the actual view switching.
+        """
         self.change_view()
 
     def change_view(self, x_vis=False, y_vis=False):

@@ -70,9 +70,19 @@ class MLStripper(HTMLParser):
         self.fed = []
 
     def handle_data(self, d):
+        """Handle character data from HTML parsing.
+
+        Args:
+            d: Character data extracted from HTML tags.
+        """
         self.fed.append(d)
 
     def get_data(self):
+        """Get the accumulated text data with HTML tags removed.
+
+        Returns:
+            str: Concatenated string of all character data without HTML tags.
+        """
         return "".join(self.fed)
 
 
@@ -172,7 +182,12 @@ class QTool(QWidget, Ui_ToolTab):
         self.toolParamTable.setEditTriggers(QTreeWidget.EditKeyPressed)
 
     def write(self, type, flag):
-        """Write numpy error logs to the logger"""
+        """Write numpy error logs to the logger.
+
+        Args:
+            type: Type of numpy error or warning.
+            flag: Numpy error flag indicating the error category.
+        """
         self.logger.info("numpy: %s (flag %s)" % (type, flag))
 
     def destructor(self):
@@ -181,12 +196,19 @@ class QTool(QWidget, Ui_ToolTab):
         pass
 
     def precmd(self, line):
-        """Calculations before the Tool is calculated
+        """Calculations before the Tool is calculated.
 
         This function could be erased
         This method is called after the line has been input but before
-        it has been interpreted. If you want to modifdy the input line
-        before execution (for example, variable substitution) do it here."""
+        it has been interpreted. If you want to modify the input line
+        before execution (for example, variable substitution) do it here.
+
+        Args:
+            line: Input line to be processed before interpretation.
+
+        Returns:
+            str: The processed input line, potentially modified for execution.
+        """
         super(Tool, self).precmd(line)
         return line
 
@@ -199,7 +221,19 @@ class QTool(QWidget, Ui_ToolTab):
         pass
 
     def calculate_all(self, n, x, y, ax=None, color=None, file_parameters=[]):
-        """Calculate the tool for all views"""
+        """Calculate the tool for all data series.
+
+        Args:
+            n: Number of data series to process.
+            x: Input x-axis data array with shape (m, n).
+            y: Input y-axis data array with shape (m, n).
+            ax: Optional matplotlib axes object for plotting.
+            color: Optional color specification for plotting.
+            file_parameters: List of file-specific parameters.
+
+        Returns:
+            tuple[np.ndarray, np.ndarray]: Modified (x, y) data arrays with consistent dimensions.
+        """
         newxy = []
         lenx = 1e9
         for i in range(n):
@@ -217,13 +251,38 @@ class QTool(QWidget, Ui_ToolTab):
         return x, y
 
     def calculate(self, x, y, ax=None, color=None, file_parameters=[]):
+        """Calculate tool transformation on a single data series.
+
+        This is a placeholder method that should be overridden by derived tool classes
+        to implement specific data transformations.
+
+        Args:
+            x: Input x-axis data array.
+            y: Input y-axis data array.
+            ax: Optional matplotlib axes object for plotting.
+            color: Optional color specification for plotting.
+            file_parameters: List of file-specific parameters.
+
+        Returns:
+            tuple[np.ndarray, np.ndarray]: Transformed (x, y) data arrays.
+        """
         return x, y
 
     def clean_graphic_stuff(self):
+        """Clean up graphical objects created by the tool.
+
+        This method should be overridden by derived classes that create
+        graphical elements (lines, markers, annotations) that need cleanup
+        before redrawing or when the tool is deactivated.
+        """
         pass
 
     def do_cite(self, line):
-        """Print citation information"""
+        """Print citation information for the tool.
+
+        Args:
+            line: Command line arguments (unused, for compatibility).
+        """
         if len(self.citations) > 1:
             for i in range(len(self.citations)):
                 self.Qprint(
@@ -232,11 +291,23 @@ class QTool(QWidget, Ui_ToolTab):
                 )
 
     def do_plot(self, line=""):
-        """Update plot"""
+        """Update all plots in the application.
+
+        Args:
+            line: Command line arguments (unused, for compatibility).
+        """
         self.parent_application.update_all_ds_plots()
 
     def set_param_value(self, name, value):
-        """Set the value of a parameter of the tool"""
+        """Set the value of a parameter of the tool.
+
+        Args:
+            name: Name of the parameter to set.
+            value: New value for the parameter (type depends on parameter type).
+
+        Returns:
+            tuple[str, bool]: Error message (empty if successful) and success flag.
+        """
         p = self.parameters[name]
         try:
             if p.type == ParameterType.real:
@@ -317,12 +388,25 @@ class QTool(QWidget, Ui_ToolTab):
             return "", False
 
     def Qprint(self, msg, end="<br>"):
-        """Print a message on the Tool info area"""
+        """Print a message on the Tool info area.
+
+        Args:
+            msg: Message to print (str or list for table format).
+            end: HTML ending tag (default: "<br>").
+        """
         if isinstance(msg, list):
             msg = self.table_as_html(msg)
         self.print_signal.emit(msg + end)
 
     def table_as_html(self, tab):
+        """Convert a list-based table to HTML table format.
+
+        Args:
+            tab: List of lists where first element is header row and rest are data rows.
+
+        Returns:
+            str: HTML-formatted table string with borders.
+        """
         header = tab[0]
         rows = tab[1:]
         nrows = len(rows)
@@ -340,6 +424,14 @@ class QTool(QWidget, Ui_ToolTab):
         return table
 
     def table_as_ascii(self, tab):
+        """Convert a list-based table to ASCII text format.
+
+        Args:
+            tab: List of lists representing table rows.
+
+        Returns:
+            str: Space-separated text representation of the table.
+        """
         text = ""
         for row in tab:
             text += " ".join(row)
@@ -347,12 +439,24 @@ class QTool(QWidget, Ui_ToolTab):
         return text
 
     def strip_tags(self, html_text):
+        """Remove HTML tags from text.
+
+        Args:
+            html_text: HTML-formatted text string.
+
+        Returns:
+            str: Plain text with all HTML tags removed.
+        """
         s = MLStripper()
         s.feed(html_text)
         return s.get_data()
 
     def print_qtextbox(self, msg):
-        """Print message in the GUI log text box"""
+        """Print message in the GUI log text box.
+
+        Args:
+            msg: HTML-formatted message to display in the tool text box.
+        """
         self.toolTextBox.moveCursor(QTextCursor.End)
         self.toolTextBox.insertHtml(msg)
         self.toolTextBox.verticalScrollBar().setValue(
@@ -384,6 +488,12 @@ class QTool(QWidget, Ui_ToolTab):
         self.toolTextBox.document().setDefaultFont(font)
 
     def editItem(self, item, column):
+        """Handle item editing in the parameter table.
+
+        Args:
+            item: QTreeWidgetItem being edited.
+            column: Column index being edited (0=parameter name, 1=value).
+        """
         print(column)
 
     def update_parameter_table(self):
@@ -407,7 +517,12 @@ class QTool(QWidget, Ui_ToolTab):
         self.toolParamTable.header().resizeSections(QHeaderView.ResizeToContents)
 
     def handle_parameterItemChanged(self, item, column):
-        """Modify parameter values when changed in the Tool table"""
+        """Modify parameter values when changed in the Tool table.
+
+        Args:
+            item: QTreeWidgetItem that was modified.
+            column: Column index that was changed (0=parameter name, 1=value).
+        """
         param_changed = item.text(0)
         if column == 0:  # param was checked/unchecked
             if item.checkState(0) == Qt.Checked:
@@ -430,6 +545,13 @@ class QTool(QWidget, Ui_ToolTab):
         self.parent_application.update_all_ds_plots()
 
     def handle_actionActivepressed(self, checked):
+        """Handle the Active toggle button press.
+
+        Toggles whether the tool is active and updates the icon accordingly.
+
+        Args:
+            checked: True if button is checked (tool active), False otherwise.
+        """
         if checked:
             self.actionActive.setIcon(
                 QIcon(":/Icon8/Images/new_icons/icons8-toggle-on.png")
@@ -447,6 +569,13 @@ class QTool(QWidget, Ui_ToolTab):
     #     self.parent_application.update_all_ds_plots()
 
     def handle_actionApplyToTheorypressed(self, checked):
+        """Handle the Apply to Theory toggle button press.
+
+        Toggles whether the tool should also be applied to theory predictions.
+
+        Args:
+            checked: True if button is checked (apply to theory), False otherwise.
+        """
         if checked:
             self.actionApplyToTheory.setIcon(
                 QIcon(":/Icon8/Images/new_icons/icons8-einstein-yes.png")
@@ -460,6 +589,11 @@ class QTool(QWidget, Ui_ToolTab):
         self.parent_application.update_all_ds_plots()
 
     def onTreeWidgetItemDoubleClicked(self, item, column):
-        """Start editing text when a table cell is double clicked"""
+        """Start editing text when a table cell is double clicked.
+
+        Args:
+            item: QTreeWidgetItem that was double-clicked.
+            column: Column index that was double-clicked (0=parameter name, 1=value).
+        """
         if column == 1:
             self.toolParamTable.editItem(item, column)

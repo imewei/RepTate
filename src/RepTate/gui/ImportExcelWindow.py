@@ -63,6 +63,39 @@ Ui_ImportExcelMainWindow, QMainWindowImportExcel = loadUiType(
 
 
 class ImportExcelWindow(QMainWindowImportExcel, Ui_ImportExcelMainWindow):
+    """Dialog window for importing data from Excel spreadsheets.
+
+    This window provides a graphical interface for selecting Excel files (.xls or .xlsx),
+    choosing which worksheet tab to import from, selecting data columns, and previewing
+    the data before import. Supports both legacy .xls and modern .xlsx formats.
+
+    The window handles:
+        - File selection via file browser or drag-and-drop
+        - Multiple worksheet tabs with preview
+        - Column mapping to expected data types (x, y, z)
+        - Row skipping for header lines
+        - Data validation and NaN handling
+        - File parameter extraction
+
+    Attributes:
+        list_AZ (list): Column labels from A to BZ for Excel column selection.
+        MAX_ROW (int): Maximum number of rows to preview (100).
+        MAX_COL (int): Maximum number of columns to preview.
+        filepath (str): Full path to the selected Excel file.
+        dir_start (str): Starting directory for file browser.
+        is_xlsx (bool): True if file is .xlsx format, False if .xls.
+        wb: Workbook object from openpyxl or xlrd.
+        sheet: Current worksheet object.
+        max_row (int): Maximum row in current sheet.
+        max_col (int): Maximum column in current sheet.
+        nskip (int): Number of header rows to skip.
+        col_names (list): Expected column names from file type.
+        col_units (list): Expected column units from file type.
+        ncol (int): Number of expected data columns.
+        file_param (list): List of file parameter names.
+        qtables (dict): Maps sheet names to (QTableWidget, selected_columns) tuples.
+        sheet_names (list): Names of all worksheets in the workbook.
+    """
     list_AZ = [
         "A",
         "B",
@@ -173,6 +206,11 @@ class ImportExcelWindow(QMainWindowImportExcel, Ui_ImportExcelMainWindow):
         self.update_cols_cb()
 
     def handle_col1_cb_activated(self):
+        """Handle selection change in the first column combo box.
+
+        Updates the selected column index for the first data column (typically x-values)
+        and refreshes the preview table to highlight the newly selected column.
+        """
         if self.wb == None:
             return
         sheet = self.qtabs.tabText(self.qtabs.currentIndex())
@@ -182,6 +220,11 @@ class ImportExcelWindow(QMainWindowImportExcel, Ui_ImportExcelMainWindow):
         self.update_data_preview_table()
 
     def handle_col2_cb_activated(self):
+        """Handle selection change in the second column combo box.
+
+        Updates the selected column index for the second data column (typically y-values)
+        and refreshes the preview table to highlight the newly selected column.
+        """
         if self.wb == None:
             return
         sheet = self.qtabs.tabText(self.qtabs.currentIndex())
@@ -191,6 +234,12 @@ class ImportExcelWindow(QMainWindowImportExcel, Ui_ImportExcelMainWindow):
         self.update_data_preview_table()
 
     def handle_col3_cb_activated(self):
+        """Handle selection change in the third column combo box.
+
+        Updates the selected column index for the third data column (typically z-values)
+        and refreshes the preview table to highlight the newly selected column. Only
+        active when the file type expects three or more data columns.
+        """
         if self.wb == None:
             return
         sheet = self.qtabs.tabText(self.qtabs.currentIndex())
@@ -200,6 +249,13 @@ class ImportExcelWindow(QMainWindowImportExcel, Ui_ImportExcelMainWindow):
         self.update_data_preview_table()
 
     def update_cols_cb(self):
+        """Update column selection combo boxes based on file type requirements.
+
+        Populates the column selection dropdowns with available Excel column labels
+        (A, B, C, etc.) and sets their labels to indicate the expected data type
+        (e.g., 'frequency [rad/s]'). For file types with only 2 columns, hides the
+        third column selector.
+        """
         self.col1_cb.clear()
         self.col2_cb.clear()
         self.col1.setText(
@@ -223,6 +279,15 @@ class ImportExcelWindow(QMainWindowImportExcel, Ui_ImportExcelMainWindow):
             self.col3_cb.hide()
 
     def handle_tab_changed(self, idx):
+        """Handle worksheet tab selection change.
+
+        When the user switches between worksheet tabs, updates the column selection
+        combo boxes to reflect the number of columns in the new sheet and restores
+        the previously selected column indices for that sheet.
+
+        Args:
+            idx: Index of the newly selected tab.
+        """
         table, selected_idx = self.qtables[self.qtabs.tabText(idx)]
         ncols = table.columnCount()
         self.col1_cb.clear()
@@ -238,18 +303,45 @@ class ImportExcelWindow(QMainWindowImportExcel, Ui_ImportExcelMainWindow):
         self.update_data_preview_table()
 
     def handle_nskip_changed(self):
+        """Handle change in the number of rows to skip.
+
+        Updates the preview table when the user changes the spin box value for
+        skipping header rows. Skipped rows are not highlighted in the preview
+        and will not be imported.
+        """
         if self.wb == None:
             return
         self.nskip = self.skip_sb.value()
         self.update_data_preview_table()
 
     def col2num(self, col):
+        """Convert Excel column letter(s) to numeric index.
+
+        Converts column identifiers like 'A', 'B', 'AA', 'AB' to their numeric
+        equivalents (1, 2, 27, 28) using base-26 arithmetic.
+
+        Args:
+            col: Excel column label (e.g., 'A', 'AB', 'BZ').
+
+        Returns:
+            Numeric column index (1-based).
+        """
         num = 0
         for c in col:
             num = num * 26 + (ord(c) - ord("A")) + 1
         return num
 
     def update_data_preview_table(self):
+        """Update the data preview table to highlight selected columns.
+
+        Visually indicates which columns will be imported by:
+            - Changing header labels from column letters to data type names
+            - Selecting (highlighting) cells in the chosen columns
+            - Excluding skipped rows from the selection
+
+        The preview helps users verify they've selected the correct columns
+        before importing.
+        """
         idx = self.qtabs.currentIndex()
         sname = self.qtabs.tabText(idx)
         col1 = self.col2num(self.col1_cb.currentText()) - 1
@@ -276,6 +368,24 @@ class ImportExcelWindow(QMainWindowImportExcel, Ui_ImportExcelMainWindow):
         table.setFocus()
 
     def get_data(self):
+        """Extract and process data from the selected Excel worksheet.
+
+        Reads data from the currently selected worksheet tab and columns,
+        processes it (sorting by x-values, removing NaN x-values, optional
+        interpolation for NaN y/z values), and returns it in a dictionary format.
+
+        Returns:
+            Dictionary containing:
+                - error (bool): True if import failed, False otherwise.
+                - errmsg (str): Error message if error is True.
+                - file (str): Filename of the Excel file.
+                - sheet (str): Name of the worksheet.
+                - x (ndarray): First column data (sorted, NaN-free).
+                - y (ndarray): Second column data (sorted, optionally interpolated).
+                - z (ndarray): Third column data if ncol > 2 (sorted, optionally interpolated).
+                - flag_nan (bool): True if any NaN values remain in y or z after processing.
+                - col1, col2, col3 (str): Excel column letters used for each data column.
+        """
         x = []
         y = []
         z = []
@@ -397,6 +507,15 @@ class ImportExcelWindow(QMainWindowImportExcel, Ui_ImportExcelMainWindow):
         return res_dic
 
     def populate_file_param(self, params):
+        """Populate the file parameters text box with default values.
+
+        Creates a semicolon-separated string of parameter=value pairs for all
+        expected file parameters, initialized to 0. Users can edit these values
+        before import.
+
+        Args:
+            params: List of parameter names expected by the file type.
+        """
         self.file_param_txt.clear()
         txt = ""
         for p in params:
@@ -404,6 +523,11 @@ class ImportExcelWindow(QMainWindowImportExcel, Ui_ImportExcelMainWindow):
         self.file_param_txt.setText(txt)
 
     def handle_get_file(self):
+        """Open file browser dialog to select an Excel file.
+
+        Displays a file selection dialog filtered to show only .xls and .xlsx files.
+        If a file is selected, delegates to handle_read_new_file to load and preview it.
+        """
         # file browser window
         options = QFileDialog.Options()
         dilogue_name = "Select Excel Data File"
@@ -414,6 +538,16 @@ class ImportExcelWindow(QMainWindowImportExcel, Ui_ImportExcelMainWindow):
         self.handle_read_new_file(selected_file)
 
     def handle_read_new_file(self, path):
+        """Load and display an Excel file with all its worksheets.
+
+        Opens the Excel file (using openpyxl for .xlsx or xlrd for .xls), reads all
+        worksheets, and creates preview tables for each. Creates a tab for each worksheet
+        with a QTableWidget showing up to MAX_ROW rows and MAX_COL columns. Handles both
+        modern (.xlsx) and legacy (.xls) Excel formats.
+
+        Args:
+            path: Full file path to the Excel file to load.
+        """
         if not os.path.isfile(path):
             return
         self.dir_start = os.path.dirname(path)
@@ -473,6 +607,12 @@ class ImportExcelWindow(QMainWindowImportExcel, Ui_ImportExcelMainWindow):
         self.handle_tab_changed(0)
 
     def clear_tabs(self):
+        """Remove all worksheet tabs and reset the interface.
+
+        Clears all existing worksheet tabs from the tab widget, deletes their
+        associated QTableWidget objects, resets the skip rows spin box to 0,
+        and empties the qtables dictionary. Called before loading a new file.
+        """
         for _ in range(self.qtabs.count()):
             w = self.qtabs.widget(0)
             self.qtabs.removeTab(0)
@@ -484,12 +624,29 @@ class ImportExcelWindow(QMainWindowImportExcel, Ui_ImportExcelMainWindow):
         self.nskip = 0
 
     def dragEnterEvent(self, e):
+        """Handle drag enter events for file drag-and-drop.
+
+        Accepts the drag event if it contains a file URI, enabling users to
+        drag Excel files from their file manager directly onto the window.
+
+        Args:
+            e: QDragEnterEvent containing drag operation data.
+        """
         if e.mimeData().hasFormat("text/uri-list"):
             e.accept()
         else:
             e.ignore()
 
     def dropEvent(self, e):
+        """Handle drop events when files are dropped onto the window.
+
+        Processes dropped files by checking if they have .xls or .xlsx extensions.
+        If valid, loads the file using handle_read_new_file. Ignores files with
+        other extensions.
+
+        Args:
+            e: QDropEvent containing the dropped file data.
+        """
         path = e.mimeData().urls()[0].toLocalFile()
         if (
             os.path.splitext(path)[-1] == ".xls"

@@ -52,12 +52,27 @@ class DataSetWidget(QTreeWidget):
         self.parent_dataset = parent
 
     def mousePressEvent(self, event):
-        """Process mouse"""
+        """Process mouse press events.
+
+        Clears the current selection before processing the event, allowing users to
+        deselect items by clicking on empty areas of the widget.
+
+        Args:
+            event: QMouseEvent containing mouse press information (position, button, modifiers).
+        """
         self.clearSelection()
         QTreeWidget.mousePressEvent(self, event)
 
     def keyPressEvent(self, event):
-        """Process key"""
+        """Process keyboard events.
+
+        Intercepts Backspace and Delete key presses to trigger deletion of selected
+        data table items. Other key events are passed to the parent class for normal
+        processing.
+
+        Args:
+            event: QKeyEvent containing key press information (key code, modifiers, text).
+        """
         if event.key() == Qt.Key_Backspace or event.key() == Qt.Key_Delete:
             self.delete()
         else:

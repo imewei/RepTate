@@ -67,7 +67,15 @@ class SplashScreen(QSplashScreen):
         #QApplication.flush()
 
     def showMessage(self, msg):
-        """Procedure to update message in splash"""
+        """Display a status message on the splash screen.
+
+        Shows a message at the bottom-right corner of the splash screen in black text,
+        typically used to indicate loading progress (e.g., "Loading modules...").
+        Processes pending events to ensure the message is immediately visible.
+
+        Args:
+            msg: Message string to display on the splash screen.
+        """
         align = Qt.Alignment(Qt.AlignBottom | Qt.AlignRight | Qt.AlignAbsolute)
         # color = QtGui.QColor(QtCore.Qt.White)
         color = QColor(0, 0, 0)
@@ -80,4 +88,12 @@ class SplashScreen(QSplashScreen):
         QApplication.processEvents()
 
     def mousePressEvent(self, event):
+        """Handle mouse press events on the splash screen.
+
+        Hides the splash screen when the user clicks on it, allowing early dismissal
+        before the application has fully loaded.
+
+        Args:
+            event: QMouseEvent containing mouse press information.
+        """
         self.hide()
