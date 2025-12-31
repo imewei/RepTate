@@ -36,6 +36,12 @@ from typing import Any, Callable, Final
 
 import numpy as np
 
+# Import JAX Array type for detection
+try:
+    from jax import Array as JaxArray
+except ImportError:
+    JaxArray = None  # JAX not installed
+
 logger = logging.getLogger(__name__)
 
 
@@ -288,6 +294,16 @@ class SafeSerializer:
             if not array_key.startswith("_"):
                 array_key = "_" + array_key
             arrays[array_key] = obj
+            return {_ARRAY_REF_KEY: array_key}
+
+        # Handle JAX arrays by converting to numpy
+        if JaxArray is not None and isinstance(obj, JaxArray):
+            # Convert JAX array to numpy for storage
+            array_key = f"_{prefix.replace('.', '_')}_array_{len(arrays)}"
+            array_key = array_key.lstrip("_").replace("__", "_")
+            if not array_key.startswith("_"):
+                array_key = "_" + array_key
+            arrays[array_key] = np.array(obj)
             return {_ARRAY_REF_KEY: array_key}
 
         if isinstance(obj, list):
