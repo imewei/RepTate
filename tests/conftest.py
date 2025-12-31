@@ -264,8 +264,8 @@ class MockParameter:
         self,
         name: str,
         value: float = 0.0,
-        min_value: float = float('-inf'),
-        max_value: float = float('inf'),
+        min_value: float = -1e10,
+        max_value: float = 1e10,
     ) -> None:
         self.name = name
         self.value = value
