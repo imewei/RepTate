@@ -108,7 +108,24 @@ class ToolEvaluate(QTool):
 
 
     def calculate(self, x, y, ax=None, color=None, file_parameters=[]):
-        """Evaluate function that returns the square of the y, according to the view"""
+        """Evaluate algebraic expressions to transform x and y data.
+
+        Parses and evaluates user-defined expressions for both x and y coordinates.
+        Supports file parameters (referenced with [param_name] syntax) and numpy functions.
+        Uses restricted evaluation for security (no builtins, only whitelisted functions).
+
+        Args:
+            x (numpy.ndarray): Array of x-coordinates (abscissa values).
+            y (numpy.ndarray): Array of y-coordinates (ordinate values).
+            ax (matplotlib.axes.Axes, optional): Matplotlib axes for plotting. Defaults to None.
+            color: Color specification for plotting. Defaults to None.
+            file_parameters (list): List of file-specific parameters that can be referenced
+                in expressions using [parameter_name] syntax. Defaults to [].
+
+        Returns:
+            tuple[numpy.ndarray, numpy.ndarray]: Transformed arrays (x2, y2) resulting from
+                evaluating the x and y expressions. Returns original (x, y) if evaluation fails.
+        """
         xexpr = self.parameters["x"].value
         yexpr = self.parameters["y"].value
         self.safe_dict["x"] = x

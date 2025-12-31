@@ -82,6 +82,20 @@ class ToolBounds(QTool):
     # add widgets specific to the Tool here:
 
     def set_param_value(self, name, value):
+        """Set parameter value with validation of boundary constraints.
+
+        Validates that minimum bounds are less than maximum bounds for both x and y axes.
+        Prevents setting invalid boundary values that would create empty or inverted ranges.
+
+        Args:
+            name (str): Name of the parameter to set ('xmin', 'xmax', 'ymin', or 'ymax').
+            value: New value for the parameter (will be converted to float).
+
+        Returns:
+            tuple[str, bool]: A tuple containing:
+                - message (str): Status message or error description.
+                - success (bool): True if parameter was set successfully, False otherwise.
+        """
         p = self.parameters[name]
         old_value = p.value
         try:
@@ -119,7 +133,22 @@ class ToolBounds(QTool):
 
 
     def calculate(self, x, y, ax=None, color=None, file_parameters=[]):
-        """Bounds function limits the data shown in the view"""
+        """Filter data points to include only those within specified bounds.
+
+        Removes data points where x is outside [xmin, xmax] or y is outside [ymin, ymax].
+        Both conditions must be satisfied for a point to be retained.
+
+        Args:
+            x (numpy.ndarray): Array of x-coordinates (abscissa values).
+            y (numpy.ndarray): Array of y-coordinates (ordinate values).
+            ax (matplotlib.axes.Axes, optional): Matplotlib axes for plotting. Defaults to None.
+            color: Color specification for plotting. Defaults to None.
+            file_parameters (list): List of file-specific parameters. Defaults to [].
+
+        Returns:
+            tuple[numpy.ndarray, numpy.ndarray]: Filtered arrays (x2, y2) containing only data
+                points that satisfy both x and y boundary conditions.
+        """
         xmin = self.parameters["xmin"].value
         xmax = self.parameters["xmax"].value
         ymin = self.parameters["ymin"].value

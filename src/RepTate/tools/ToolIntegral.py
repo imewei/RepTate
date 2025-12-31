@@ -67,7 +67,25 @@ class ToolIntegral(QTool):
 
 
     def calculate(self, x, y, ax=None, color=None, file_parameters=[]):
-        """Integral function that returns the cumulative integral of y with respect to x"""
+        """Calculate the cumulative integral of y with respect to x.
+
+        Removes duplicate x values, interpolates data using cubic splines (via interpax),
+        and performs cumulative trapezoidal integration. The total integral value is
+        displayed in the tool output area.
+
+        Args:
+            x (numpy.ndarray): Array of x-coordinates (integration variable).
+            y (numpy.ndarray): Array of y-coordinates (integrand).
+            ax (matplotlib.axes.Axes, optional): Matplotlib axes for plotting. Defaults to None.
+            color: Color specification for plotting. Defaults to None.
+            file_parameters (list): List of file-specific parameters. Defaults to [].
+
+        Returns:
+            tuple[numpy.ndarray, numpy.ndarray]: Tuple (xunique, cumulative_integral) where
+                xunique contains unique x values and cumulative_integral contains the
+                running integral from x[0] to each x value. Returns original (x, y) if
+                calculation fails.
+        """
         xunique, indunique = np.unique(x, return_index=True)
         num_rows = len(xunique)
         yunique = y[indunique]

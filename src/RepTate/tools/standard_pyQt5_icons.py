@@ -3,6 +3,16 @@ from PySide6.QtWidgets import QWidget, QGridLayout, QPushButton, QStyle, QApplic
 
 
 class Widget(QWidget):
+    """Demo widget displaying all standard Qt/PySide6 icons.
+
+    Creates a grid layout showing all available standard icons from QStyle.
+    Useful for developers to browse and select icons for use in the application.
+    Each button displays an icon and its corresponding QStyle constant name.
+
+    Attributes:
+        None - all icons are created dynamically in __init__
+    """
+
     def __init__(self, parent=None):
         super(Widget, self).__init__()
 

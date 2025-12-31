@@ -107,6 +107,17 @@ class ToolFindPeaks(QTool):
         # add widgets specific to the Tool here:
 
     def handle_minpeaks_button(self, checked: bool) -> None:
+        """Handle the minimum/maximum peaks toggle button.
+
+        Updates the button icon and internal parameter based on whether the tool should
+        search for minimum peaks (valleys) or maximum peaks. Triggers a plot update.
+
+        Args:
+            checked (bool): If True, search for minimum peaks; if False, search for maximum peaks.
+
+        Returns:
+            None
+        """
         if checked:
             self.minpeaks.setIcon(
                 QIcon(":/Icon8/Images/new_icons/icons8-peak-minimum.png")
@@ -120,11 +131,30 @@ class ToolFindPeaks(QTool):
         self.parent_application.update_all_ds_plots()
 
     def handle_parabola_button(self, checked: bool) -> None:
+        """Handle the parabola fitting toggle button.
+
+        Controls whether peaks are refined by fitting a parabola to nearby points
+        and finding the analytical extremum, or simply using the maximum data point.
+
+        Args:
+            checked (bool): If True, fit parabolas to peaks; if False, use raw data maxima.
+
+        Returns:
+            None
+        """
         self.parabola.setChecked(checked)
         self.set_param_value("parabola", checked)
         self.parent_application.update_all_ds_plots()
 
     def clean_graphic_stuff(self) -> None:
+        """Clean up graphical elements (peak markers) from all plots.
+
+        Removes all peak marker symbols that were previously added to plots and clears
+        the internal tracking arrays. Called when the tool is destroyed or reset.
+
+        Returns:
+            None
+        """
         for s, a in zip(self.seriesarray, self.axarray):
             # a.lines.remove(s)
             s.remove()
@@ -143,6 +173,25 @@ class ToolFindPeaks(QTool):
         color: object | None = None,
         file_parameters: Sequence[Parameter] | None = None,
     ) -> tuple[npt.NDArray[np.floating], npt.NDArray[np.floating]]:
+        """Find and mark peaks (maxima or minima) in the data.
+
+        Detects peaks using threshold-based filtering and minimum distance separation.
+        Optionally refines peak positions by fitting parabolas. Displays peak locations
+        in the tool output and plots them as diamond markers on the graph.
+
+        Args:
+            x (numpy.ndarray): Array of x-coordinates (abscissa values).
+            y (numpy.ndarray): Array of y-coordinates (ordinate values).
+            ax (matplotlib.axes.Axes, optional): Matplotlib axes for plotting peak markers.
+                Defaults to None.
+            color: Color specification for peak markers. Defaults to None.
+            file_parameters (Sequence[Parameter], optional): List of file-specific parameters.
+                Defaults to None.
+
+        Returns:
+            tuple[numpy.ndarray, numpy.ndarray]: Original input arrays (x, y) unchanged.
+                Peak information is displayed in the tool output area and plotted as markers.
+        """
         if file_parameters is None:
             file_parameters = []
         threshold = self.parameters["threshold"].value

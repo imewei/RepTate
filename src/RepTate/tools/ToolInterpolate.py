@@ -68,7 +68,23 @@ class ToolInterpolateExtrapolate(QTool):
 
 
     def calculate(self, x, y, ax=None, color=None, file_parameters=[]):
-        """InterpolateExtrapolate function that interpolates/extrapolates y at a given x value"""
+        """Interpolate or extrapolate y value at a specified x coordinate.
+
+        Uses cubic spline interpolation (via interpax) to estimate y at the user-specified
+        x value. Handles extrapolation beyond the data range. Results are displayed in a
+        formatted table in the tool output area.
+
+        Args:
+            x (numpy.ndarray): Array of x-coordinates (data points).
+            y (numpy.ndarray): Array of y-coordinates (data points).
+            ax (matplotlib.axes.Axes, optional): Matplotlib axes for plotting. Defaults to None.
+            color: Color specification for plotting. Defaults to None.
+            file_parameters (list): List of file-specific parameters. Defaults to [].
+
+        Returns:
+            tuple[numpy.ndarray, numpy.ndarray]: Original input arrays (x, y) unchanged.
+                The interpolated/extrapolated value is displayed in the tool output.
+        """
         xval = self.parameters["x"].value
         xunique, indunique = np.unique(x, return_index=True)
         yunique = y[indunique]

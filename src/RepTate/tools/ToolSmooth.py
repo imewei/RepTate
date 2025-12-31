@@ -125,6 +125,21 @@ class ToolSmooth(QTool):
     # add widgets specific to the Tool here:
 
     def set_param_value(self, name, value):
+        """Set parameter value with validation of smoothing constraints.
+
+        Validates that window is a positive odd integer larger than order, and that
+        order is non-negative and smaller than window. Prevents invalid parameter
+        combinations for Savitzky-Golay filtering.
+
+        Args:
+            name (str): Name of the parameter to set ('window' or 'order').
+            value: New value for the parameter (will be converted to int).
+
+        Returns:
+            tuple[str, bool]: A tuple containing:
+                - message (str): Status message or error description.
+                - success (bool): True if parameter was set successfully, False otherwise.
+        """
         p = self.parameters[name]
         old_value = p.value
         try:
@@ -152,7 +167,24 @@ class ToolSmooth(QTool):
 
 
     def calculate(self, x, y, ax=None, color=None, file_parameters=[]):
-        """Smooth the x, y data"""
+        """Smooth data using Savitzky-Golay filter.
+
+        Applies a Savitzky-Golay filter that fits successive sub-sets of adjacent
+        data points with a polynomial. Uses JAX implementation for computation.
+        Validates parameters before filtering.
+
+        Args:
+            x (numpy.ndarray): Array of x-coordinates (unchanged).
+            y (numpy.ndarray): Array of y-coordinates (data to be smoothed).
+            ax (matplotlib.axes.Axes, optional): Matplotlib axes for plotting. Defaults to None.
+            color: Color specification for plotting. Defaults to None.
+            file_parameters (list): List of file-specific parameters. Defaults to [].
+
+        Returns:
+            tuple[numpy.ndarray, numpy.ndarray]: Tuple (x, smoothed_y) where smoothed_y
+                contains the filtered data. Returns original (x, y) if filtering fails
+                or parameters are invalid.
+        """
         window = self.parameters["window"].value
         order = self.parameters["order"].value
         if window % 2 == 0:

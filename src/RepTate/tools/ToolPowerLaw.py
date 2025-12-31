@@ -71,7 +71,23 @@ If not, you can safely delete it."""
         pass
 
     def calculate(self, x, y, ax=None, color=None, file_parameters=[]):
-        """Returns y divided by x^n, according to the view"""
+        """Check power law behavior by normalizing y by x raised to power n.
+
+        Divides y-coordinates by x^n to verify if the data follows a power law
+        relationship. If the data follows y = A*x^n, the result will be a horizontal
+        line at y = A.
+
+        Args:
+            x (numpy.ndarray): Array of x-coordinates (independent variable).
+            y (numpy.ndarray): Array of y-coordinates (dependent variable).
+            ax (matplotlib.axes.Axes, optional): Matplotlib axes for plotting. Defaults to None.
+            color: Color specification for plotting. Defaults to None.
+            file_parameters (list): List of file-specific parameters. Defaults to [].
+
+        Returns:
+            tuple[numpy.ndarray, numpy.ndarray]: Tuple (x, y/x^n) where the y values are
+                normalized by the power law scaling factor.
+        """
         n = self.parameters["n"].value
         return x, y / x ** n
 

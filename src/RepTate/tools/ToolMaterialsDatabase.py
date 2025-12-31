@@ -430,9 +430,28 @@ class ToolMaterialsDatabase(QTool):
         self.change_material()
 
     def handle_vert_and_iso(self):
+        """Handle vertical shift and isofrictional state toggle buttons.
+
+        Updates the plot when the vertical shift or isofrictional state options
+        are toggled by the user.
+
+        Returns:
+            None
+        """
         self.do_plot()
 
     def handle_shift_data(self):
+        """Apply time-temperature superposition (TTS) to all files in the current dataset.
+
+        Uses WLF equation to calculate horizontal shift factors (aT) and thermal expansion
+        for vertical shift factors (bT). Shifts all data to the reference temperature specified
+        in the tool. Optionally corrects for isofrictional state and applies vertical shifting.
+
+        The method modifies file data in-place and updates file parameters.
+
+        Returns:
+            None
+        """
         Tr = float(self.editT.text())
         chem = self.cbmaterial.currentText()
         msg = "Selected T=%g\nSelected material=%s\n" % (Tr, chem)
@@ -523,6 +542,15 @@ class ToolMaterialsDatabase(QTool):
         self.do_plot()
 
     def change_material(self):
+        """Update tool parameters when a different material is selected.
+
+        Retrieves material properties from the appropriate database (user or general)
+        and updates all tool parameters with the selected material's values. Updates
+        the display and refreshes the plot.
+
+        Returns:
+            None
+        """
         selected_material_name = self.cbmaterial.currentText()
         if self.cbmaterial.currentIndex() < self.num_materials_base:
             dbindex = 1
@@ -539,6 +567,15 @@ class ToolMaterialsDatabase(QTool):
         self.do_plot()
 
     def new_material(self):
+        """Create a new material in the user database.
+
+        Prompts for a unique material name, creates a new material with default
+        parameters, adds it to the user database and combo box, then opens the
+        edit dialog for customization.
+
+        Returns:
+            None
+        """
         # Dialog to ask for short name. Repeat until the name is not in the user's database or CANCEL
         ok = False
         while not ok:
@@ -589,6 +626,15 @@ class ToolMaterialsDatabase(QTool):
     """
 
     def edit_material(self):
+        """Edit parameters of a user-defined material.
+
+        Opens a dialog allowing modification of all material parameters. Only materials
+        in the user database can be edited (not the built-in general database). Updates
+        the tool display after successful editing.
+
+        Returns:
+            None
+        """
         selected_material_name = self.cbmaterial.currentText()
         if self.cbmaterial.currentIndex() < self.num_materials_base:
             QMessageBox.warning(
@@ -612,6 +658,14 @@ class ToolMaterialsDatabase(QTool):
             self.change_material()
 
     def save_usermaterials(self):
+        """Save the user materials database to disk.
+
+        Writes all user-defined materials to a JSON file in the application data directory.
+        Displays a confirmation message with the file path.
+
+        Returns:
+            None
+        """
         AppData_path = QStandardPaths.writableLocation(QStandardPaths.AppDataLocation)
         file_user_database = os.path.join(AppData_path, "user_database.json")
         materials_db_io.write_materials_json(materials_user_database, file_user_database)
@@ -619,6 +673,15 @@ class ToolMaterialsDatabase(QTool):
         QMessageBox.information(self, "Saved", msg)
 
     def copy_material(self):
+        """Duplicate the currently selected material to the user database.
+
+        Creates a copy of the selected material (from either user or general database)
+        with a new name in the user database. Prompts for a unique name and adds the
+        duplicated material to the combo box.
+
+        Returns:
+            None
+        """
         # Dialog to ask for short name. Repeat until the name is not in the user's database or CANCEL
         name = ""
         ok = False
@@ -668,6 +731,15 @@ class ToolMaterialsDatabase(QTool):
         self.model.appendRow(item)
 
     def delete_material(self):
+        """Delete a material from the user database.
+
+        Removes the selected material after confirmation. Only user materials can be
+        deleted (not materials from the general database). Updates the combo box and
+        internal database.
+
+        Returns:
+            None
+        """
         # Check that the material is in the user database
         selected_material_name = self.cbmaterial.currentText()
         if self.cbmaterial.currentIndex() < self.num_materials_base:
@@ -690,6 +762,21 @@ class ToolMaterialsDatabase(QTool):
             materials_user_database.pop(selected_material_name)
 
     def calculate_stuff(self, line="", file_parameters=[]):
+        """Calculate material properties and tube theory parameters.
+
+        Computes WLF shift factors, corrected tube parameters (tau_e, Ge), and
+        derived quantities (Z, tau_R, tau_D) for the selected material at the
+        specified molecular weight and temperature. Results are displayed in a
+        formatted table.
+
+        Args:
+            line (str, optional): Command line arguments (unused in GUI mode). Defaults to "".
+            file_parameters (list, optional): File parameters containing Mw and T values.
+                Defaults to [].
+
+        Returns:
+            None
+        """
         if "Mw" in file_parameters:
             Mw = float(file_parameters["Mw"])
         else:
@@ -752,16 +839,44 @@ class ToolMaterialsDatabase(QTool):
         self.Qprint(tab_data)
 
     def calculate(self, x, y, ax=None, color=None, file_parameters=[]):
-        """Calculate some results related to the selected material or the file material"""
+        """Calculate material-specific results using file parameters.
+
+        Wrapper that calls calculate_stuff with file parameters to compute material
+        properties. Returns data unchanged as this tool is for information display only.
+
+        Args:
+            x (numpy.ndarray): Array of x-coordinates (unchanged).
+            y (numpy.ndarray): Array of y-coordinates (unchanged).
+            ax (matplotlib.axes.Axes, optional): Matplotlib axes for plotting. Defaults to None.
+            color: Color specification for plotting. Defaults to None.
+            file_parameters (list): File parameters containing Mw and T values. Defaults to [].
+
+        Returns:
+            tuple[numpy.ndarray, numpy.ndarray]: Original input arrays (x, y) unchanged.
+        """
         self.calculate_stuff("", file_parameters)
         return x, y
 
     def do_calculate_stuff(self, line=""):
-        """Given the values of Mw (in kDa) and T (in °C), as well as a flag for isofrictional state and vertical shift, it returns some calculations for the current chemistry.
+        """Calculate material properties from command line arguments.
+
+        Command-line interface for computing WLF shift factors and tube theory parameters.
+        Parses a space-separated line containing Mw, T, isofrictional flag, and vertical
+        shift flag, then displays calculated results.
+
+        Args:
+            line (str, optional): Space-separated parameters in format:
+                "Mw T isofrictional verticalshift"
+                Example: "35.4 240 1 1" for Mw=35.4 kDa, T=240°C, iso=True, vert=True.
+                Defaults to "".
+
+        Returns:
+            None
+
         Example:
             calculate_stuff 35.4 240 1 1
-
-            Mw=35.4 T=240 isofrictional=True verticalshift=True"""
+            Output: Mw=35.4 T=240 isofrictional=True verticalshift=True
+        """
         items = line.split()
         if len(items) == 4:
             Mw = float(items[0])
@@ -825,7 +940,23 @@ class ToolMaterialsDatabase(QTool):
             print("   Usage: calculate_stuff Mw T isofrictional verticalshift")
 
     def calculate_all(self, n, x, y, ax=None, color=None, file_parameters=[]):
-        """Calculate the tool for all views - In MatDB, only first view is needed"""
+        """Calculate tool output for multiple data series.
+
+        For the Materials Database tool, only the first series needs calculation.
+        Subsequent series are processed but only the first triggers actual computations.
+
+        Args:
+            n (int): Number of data series to process.
+            x (numpy.ndarray): 2D array of x-coordinates with shape (npoints, n).
+            y (numpy.ndarray): 2D array of y-coordinates with shape (npoints, n).
+            ax (matplotlib.axes.Axes, optional): Matplotlib axes for plotting. Defaults to None.
+            color: Color specification for plotting. Defaults to None.
+            file_parameters (list): File parameters containing Mw and T values. Defaults to [].
+
+        Returns:
+            tuple[numpy.ndarray, numpy.ndarray]: Arrays (x, y) resized to consistent length
+                across all series.
+        """
         newxy = []
         lenx = 1e9
         for i in range(n):

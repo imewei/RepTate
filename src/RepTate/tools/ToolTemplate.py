@@ -69,6 +69,19 @@ If not, you can safely delete it."""
         pass
 
     def calculate(self, x, y, ax=None, color=None, file_parameters=[]):
-        """Template function that returns the square of the y, according to the view
+        """Template calculation function that squares the y-coordinates.
+
+        This is a placeholder implementation demonstrating the calculate method structure.
+        Replace with actual tool logic when implementing a new tool.
+
+        Args:
+            x (numpy.ndarray): Array of x-coordinates (unchanged in this template).
+            y (numpy.ndarray): Array of y-coordinates (will be squared).
+            ax (matplotlib.axes.Axes, optional): Matplotlib axes for plotting. Defaults to None.
+            color: Color specification for plotting. Defaults to None.
+            file_parameters (list): List of file-specific parameters. Defaults to [].
+
+        Returns:
+            tuple[numpy.ndarray, numpy.ndarray]: Tuple (x, y^2) where y values are squared.
         """
         return x, y * y

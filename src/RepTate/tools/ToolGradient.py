@@ -64,6 +64,24 @@ class ToolGradient(QTool):
 
 
     def calculate(self, x, y, ax=None, color=None, file_parameters=[]):
+        """Calculate the derivative of y with respect to x.
+
+        Computes numerical gradient using second-order accurate central differences
+        in the interior and first-order accurate one-sided differences at boundaries.
+        Uses numpy.gradient for the computation.
+
+        Args:
+            x (numpy.ndarray): Array of x-coordinates (independent variable).
+            y (numpy.ndarray): Array of y-coordinates (dependent variable to differentiate).
+            ax (matplotlib.axes.Axes, optional): Matplotlib axes for plotting. Defaults to None.
+            color: Color specification for plotting. Defaults to None.
+            file_parameters (list): List of file-specific parameters. Defaults to [].
+
+        Returns:
+            tuple[numpy.ndarray, numpy.ndarray]: Tuple containing (x, dy/dx) where dy/dx is
+                the numerical derivative of y with respect to x. Returns original (x, y)
+                if calculation fails.
+        """
         try:
             y2 = np.gradient(y, x)
             return x, y2
