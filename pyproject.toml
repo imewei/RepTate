@@ -117,7 +117,7 @@ exclude = ["tests*", "docs*"]
 "RepTate" = ["*.ui", "*.qrc", "*.npy", "*.so", "*.npz"]
 
 [tool.setuptools_scm]
-version_scheme = "release-branch-semver"
+version_scheme = "python-simplified-semver"
 local_scheme = "no-local-version"
 tag_regex = "^v(?P<version>\\d+\\.\\d+\\.\\d+)$"
 
