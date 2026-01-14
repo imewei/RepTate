@@ -549,3 +549,71 @@ QFrame[frameShape="4"], /* HLine */
 QFrame[frameShape="5"]  /* VLine */ {
     background-color: #e0e0e0;
 }
+
+/* ===== Accessibility: Focus Ring Base Style (T004) ===== */
+/* Base focus ring style - widget-specific overrides below */
+*:focus {
+    border: 2px solid #1976d2;
+}
+
+/* ===== Accessibility: WCAG AA Contrast for Disabled Buttons (T005) ===== */
+/* Updated contrast ratio: ~4.9:1 (passes WCAG AA 4.5:1 minimum) */
+QPushButton:disabled {
+    background-color: #e0e0e0;
+    color: #616161;
+}
+
+QToolButton:disabled {
+    background-color: transparent;
+    color: #616161;
+}
+
+/* ===== Splitter Usability: 6px Grab Areas (T006) ===== */
+QSplitter::handle:horizontal {
+    width: 6px;
+}
+
+QSplitter::handle:vertical {
+    height: 6px;
+}
+
+/* ===== Logger Widget Selector (T007) ===== */
+/* Object name selector for logger widget background */
+QTextBrowser#loggerWidget {
+    background-color: #ffffde;  /* rgb(255, 255, 222) - light yellow */
+}
+
+/* ===== Accessibility: Widget-Specific Focus Styles (T028-T032) ===== */
+/* These extend the base focus style (T004) with widget-specific adjustments */
+
+/* T028: QPushButton focus - preserve border-radius */
+QPushButton:focus {
+    border: 2px solid #1976d2;
+    border-radius: 6px;
+}
+
+/* T029: QToolButton focus - preserve icon spacing */
+QToolButton:focus {
+    border: 2px solid #1976d2;
+    border-radius: 6px;
+    padding: 4px;
+}
+
+/* T030: QComboBox focus - preserve dropdown arrow area */
+QComboBox:focus {
+    border: 2px solid #1976d2;
+    border-radius: 6px;
+}
+
+/* T031: QLineEdit/QTextEdit focus - inset focus ring */
+QLineEdit:focus, QTextEdit:focus, QPlainTextEdit:focus {
+    border: 2px solid #1976d2;
+    border-radius: 6px;
+    padding: 6px 10px;
+}
+
+/* T032: QSpinBox/QDoubleSpinBox focus - preserve spin buttons */
+QSpinBox:focus, QDoubleSpinBox:focus {
+    border: 2px solid #1976d2;
+    border-radius: 6px;
+}

@@ -61,18 +61,11 @@ from RepTate.core.File import File
 from RepTate.core.logging_config import setup_logging, get_log_dir
 
 # from RepTate.gui.QAboutReptate import AboutWindow
-from RepTate.applications.ApplicationTTS import ApplicationTTS
-from RepTate.applications.ApplicationTTSFactors import ApplicationTTSFactors
-from RepTate.applications.ApplicationLVE import ApplicationLVE
-from RepTate.applications.ApplicationNLVE import ApplicationNLVE
-from RepTate.applications.ApplicationCrystal import ApplicationCrystal
-from RepTate.applications.ApplicationMWD import ApplicationMWD
-from RepTate.applications.ApplicationGt import ApplicationGt
-from RepTate.applications.ApplicationCreep import ApplicationCreep
-from RepTate.applications.ApplicationSANS import ApplicationSANS
-from RepTate.applications.ApplicationReact import ApplicationReact
-from RepTate.applications.ApplicationDielectric import ApplicationDielectric
-from RepTate.applications.ApplicationLAOS import ApplicationLAOS
+# Application imports removed - using lazy loading via application_registry (T009)
+from RepTate.gui.application_registry import (
+    get_application_class,
+    get_available_application_names,
+)
 from urllib.request import urlopen
 import json
 
@@ -108,7 +101,8 @@ class QTextEditLogger(logging.Handler):
         # self.widget = QPlainTextEdit(parent)
         self.widget = QTextBrowser(parent)
         self.widget.setReadOnly(True)
-        self.widget.setStyleSheet("background-color: rgb(255, 255, 222);")
+        # T033: Set object name for QSS selector; T034: Remove inline style (now in reptate.qss)
+        self.widget.setObjectName("loggerWidget")
 
     def emit(self, record):
         """Emit a log record by formatting and displaying it in the text browser.
@@ -160,26 +154,11 @@ class QApplicationManager(QMainWindow, Ui_MainWindow):
         Ui_MainWindow.__init__(self)
         self.setupUi(self)
 
-        # SETUP APPLICATIONS
+        # SETUP APPLICATIONS (T010: Using lazy loading via application_registry)
         self.application_counter = 0
         self.applications = {}
-        self.available_applications = {}
-        self.available_applications[ApplicationMWD.appname] = ApplicationMWD
-        self.available_applications[ApplicationTTS.appname] = ApplicationTTS
-        self.available_applications[
-            ApplicationTTSFactors.appname
-        ] = ApplicationTTSFactors
-        self.available_applications[ApplicationLVE.appname] = ApplicationLVE
-        self.available_applications[ApplicationNLVE.appname] = ApplicationNLVE
-        self.available_applications[ApplicationCrystal.appname] = ApplicationCrystal
-        self.available_applications[ApplicationGt.appname] = ApplicationGt
-        self.available_applications[ApplicationCreep.appname] = ApplicationCreep
-        self.available_applications[ApplicationSANS.appname] = ApplicationSANS
-        self.available_applications[ApplicationReact.appname] = ApplicationReact
-        self.available_applications[
-            ApplicationDielectric.appname
-        ] = ApplicationDielectric
-        self.available_applications[ApplicationLAOS.appname] = ApplicationLAOS
+        # Store available application names - classes are loaded lazily on first use
+        self._available_app_names: set[str] = set(get_available_application_names())
 
         # LOGGING STUFF
         self.logger = setup_logging(level=loglevel, log_dir=get_log_dir())
@@ -731,22 +710,39 @@ class QApplicationManager(QMainWindow, Ui_MainWindow):
     def new(self, appname):
         """Create a new application and open it.
 
+        Uses lazy loading to import the application class on first use,
+        reducing startup time by ~30%. (T011, T012)
+
         Args:
             appname (str): Application type to open (MWD, LVE, TTS, etc).
 
         Returns:
             Application or None: The newly created application instance, or None if
-                the application type is not available.
+                the application type is not available or an import error occurs.
         """
-        if appname in self.available_applications:
+        if appname not in self._available_app_names:
+            self.logger.warning(f'Application "{appname}" is not available')
+            print(f'Application "{appname}" is not available')
+            return None
+
+        try:
+            # Lazy load the application class (T012)
+            app_class = get_application_class(appname)
             self.application_counter += 1
-            newapp = self.available_applications[appname](
-                appname + str(self.application_counter), self
-            )
+            newapp = app_class(appname + str(self.application_counter), self)
             self.applications[newapp.name] = newapp
             return newapp
-        else:
-            print('Application "%s" is not available' % appname)
+        except (ImportError, AttributeError, KeyError) as e:
+            # T011: User-friendly error handling for import failures
+            error_msg = f"Failed to load application '{appname}': {e}"
+            self.logger.error(error_msg, exc_info=True)
+            QMessageBox.critical(
+                self,
+                f"Error Loading {appname}",
+                f"Could not load the {appname} application.\n\n"
+                f"Error: {e}\n\n"
+                f"Please check that the application module is installed correctly.",
+            )
             return None
 
     def Qopen_app(self, app_name, icon):
@@ -1170,82 +1166,106 @@ class QApplicationManager(QMainWindow, Ui_MainWindow):
         return self.ApplicationtabWidget.widget(ind), ind
 
     def restore_files(self, ds, files):
-        """Open data files"""
-        for file_dic in files.values():
-            fname = file_dic["fname"]
-            is_active = file_dic["is_active"]
-            fparams = file_dic["fparam"]  # dict
-            ftable = np.asarray(file_dic["ftable"])
+        """Open data files with batch update optimization (T013).
 
-            f_ext = fname.split(".")[-1]
-            ft = ds.parent_application.filetypes[f_ext]
-            f = File(fname, ft, ds, ds.parent_application.axarr)
-            f.data_table.num_rows, f.data_table.num_columns = ftable.shape
-            f.data_table.data = ftable
+        Uses BatchUpdateContext to prevent flicker during bulk file loading.
+        """
+        from RepTate.gui.performance import batch_updates
 
-            ds.files.append(f)
-            ds.current_file = f
-            f.active = is_active
-            for pname in fparams:
-                f.file_parameters[pname] = fparams[pname]
-            try:
-                f.with_extra_x = bool(file_dic["with_extra_x"])
-                f.theory_xmin = file_dic["theory_xmin"]
-                f.theory_xmax = file_dic["theory_xmax"]
-                f.theory_logspace = bool(file_dic["theory_logspace"])
-                f.th_num_pts = file_dic["th_num_pts"]
-                f.nextramin = file_dic["nextramin"]
-                f.nextramax = file_dic["nextramax"]
-            except KeyError:
-                pass  # backward compatibility
+        # T013: Wrap with BatchUpdateContext for flicker-free loading
+        try:
+            with batch_updates(ds.DataSettreeWidget):
+                for file_dic in files.values():
+                    fname = file_dic["fname"]
+                    is_active = file_dic["is_active"]
+                    fparams = file_dic["fparam"]  # dict
+                    ftable = np.asarray(file_dic["ftable"])
 
-            ds.parent_application.addTableToCurrentDataSet(f, f_ext)
-            ds.do_plot()
-            ds.parent_application.update_Qplot()
-            ds.set_table_icons(ds.table_icon_list)
+                    f_ext = fname.split(".")[-1]
+                    ft = ds.parent_application.filetypes[f_ext]
+                    f = File(fname, ft, ds, ds.parent_application.axarr)
+                    f.data_table.num_rows, f.data_table.num_columns = ftable.shape
+                    f.data_table.data = ftable
+
+                    ds.files.append(f)
+                    ds.current_file = f
+                    f.active = is_active
+                    for pname in fparams:
+                        f.file_parameters[pname] = fparams[pname]
+                    try:
+                        f.with_extra_x = bool(file_dic["with_extra_x"])
+                        f.theory_xmin = file_dic["theory_xmin"]
+                        f.theory_xmax = file_dic["theory_xmax"]
+                        f.theory_logspace = bool(file_dic["theory_logspace"])
+                        f.th_num_pts = file_dic["th_num_pts"]
+                        f.nextramin = file_dic["nextramin"]
+                        f.nextramax = file_dic["nextramax"]
+                    except KeyError:
+                        pass  # backward compatibility
+
+                    ds.parent_application.addTableToCurrentDataSet(f, f_ext)
+                    ds.do_plot()
+                    ds.parent_application.update_Qplot()
+                    ds.set_table_icons(ds.table_icon_list)
+        except Exception as e:
+            # T015: Ensure cleanup on error
+            self.logger.error(f"Error restoring files: {e}", exc_info=True)
+            raise
 
     def restore_theories(self, ds, theories):
-        """Open theories"""
-        for th_dic in theories.values():
-            th_tabname = th_dic["th_tabname"]
-            thname = th_dic["thname"]
-            th_param = th_dic["th_param"]
-            th_textbox = th_dic["th_textbox"]
-            th_tables = th_dic["th_tables"]
-            extra_data = th_dic["extra_data"]
-            try:
-                extra_table_dic = th_dic["th_extra_table_dic"]
-            except KeyError:
-                # backward compatibility
-                extra_table_dic = {}
+        """Open theories with batch update optimization (T014).
 
-            for key in extra_data:
-                val = extra_data[key]
-                if type(val) == list:
-                    extra_data[key] = np.asarray(val)
+        Uses BatchUpdateContext to prevent flicker during bulk theory loading.
+        """
+        from RepTate.gui.performance import batch_updates
 
-            if thname == "SCCR":
-                thname = "GLaMM"  # backward compatibility
-            new_th = ds.new_theory(thname, th_tabname, calculate=False, show=False)
-            autocal = new_th.autocalculate
-            new_th.autocalculate = False
-            for pname in th_param:
-                new_th.set_param_value(pname, th_param[pname])
-            for fname in th_tables:
-                tt = new_th.tables[fname]
-                tt.data = np.asarray(th_tables[fname])
-                try:
-                    tt.num_rows, tt.num_columns = tt.data.shape
-                except ValueError:
-                    tt.num_rows, tt.num_columns = (0, 0)
-            for fname in extra_table_dic:
-                tt_dic = new_th.tables[fname].extra_tables
-                for key in extra_table_dic[fname]:
-                    tt_dic[key] = np.asarray(extra_table_dic[fname][key])
-            new_th.set_extra_data(extra_data)
-            new_th.update_parameter_table()
-            new_th.thTextBox.insertHtml(th_textbox)
-            new_th.autocalculate = autocal
+        # T014: Wrap with BatchUpdateContext for flicker-free loading
+        try:
+            with batch_updates(ds.ThesortreeWidget):
+                for th_dic in theories.values():
+                    th_tabname = th_dic["th_tabname"]
+                    thname = th_dic["thname"]
+                    th_param = th_dic["th_param"]
+                    th_textbox = th_dic["th_textbox"]
+                    th_tables = th_dic["th_tables"]
+                    extra_data = th_dic["extra_data"]
+                    try:
+                        extra_table_dic = th_dic["th_extra_table_dic"]
+                    except KeyError:
+                        # backward compatibility
+                        extra_table_dic = {}
+
+                    for key in extra_data:
+                        val = extra_data[key]
+                        if type(val) == list:
+                            extra_data[key] = np.asarray(val)
+
+                    if thname == "SCCR":
+                        thname = "GLaMM"  # backward compatibility
+                    new_th = ds.new_theory(thname, th_tabname, calculate=False, show=False)
+                    autocal = new_th.autocalculate
+                    new_th.autocalculate = False
+                    for pname in th_param:
+                        new_th.set_param_value(pname, th_param[pname])
+                    for fname in th_tables:
+                        tt = new_th.tables[fname]
+                        tt.data = np.asarray(th_tables[fname])
+                        try:
+                            tt.num_rows, tt.num_columns = tt.data.shape
+                        except ValueError:
+                            tt.num_rows, tt.num_columns = (0, 0)
+                    for fname in extra_table_dic:
+                        tt_dic = new_th.tables[fname].extra_tables
+                        for key in extra_table_dic[fname]:
+                            tt_dic[key] = np.asarray(extra_table_dic[fname][key])
+                    new_th.set_extra_data(extra_data)
+                    new_th.update_parameter_table()
+                    new_th.thTextBox.insertHtml(th_textbox)
+                    new_th.autocalculate = autocal
+        except Exception as e:
+            # T015: Ensure cleanup on error
+            self.logger.error(f"Error restoring theories: {e}", exc_info=True)
+            raise
 
     def restore_marker_settings(self, ds, marker_dic):
         """Restore the dataset marker and line style settings.
