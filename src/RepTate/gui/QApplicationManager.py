@@ -150,11 +150,7 @@ class QApplicationManager(QMainWindow, Ui_MainWindow):
 
     html_help_file = "http://reptate.readthedocs.io/index.html"
     # COPIED FROM APPLICATIONMANAGER
-    verdata = RepTate._version.get_versions()
-    version = verdata["version"].split("+")[0]
-    date = verdata["date"].split("T")[0]
-    build = verdata["version"]
-    intro = "RepTate %s - %s command processor (Build %s)" % (version, date, build)
+    intro = "RepTate %s command processor" % RepTate.__version__
     # END COPY
 
     def __init__(self, parent=None, loglevel=logging.INFO):
@@ -189,12 +185,13 @@ class QApplicationManager(QMainWindow, Ui_MainWindow):
         self.logger = setup_logging(level=loglevel, log_dir=get_log_dir())
         self.logger.debug("New ApplicationManager")
 
+        # Load modern stylesheet (after logger is initialized)
+        self._load_stylesheet()
+
         if CmdBase.calcmode == CalcMode.singlethread:
-            self.setWindowTitle(
-                "RepTate " + self.version + " " + self.date + " - SINGLE THREAD!!"
-            )
+            self.setWindowTitle("RepTate " + RepTate.__version__ + " - SINGLE THREAD!!")
         else:
-            self.setWindowTitle("RepTate " + self.version + " " + self.date)
+            self.setWindowTitle("RepTate " + RepTate.__version__)
 
         # Add Apps
         self.toolBarApps.addAction(self.actionMWD)
@@ -568,8 +565,7 @@ class QApplicationManager(QMainWindow, Ui_MainWindow):
         tag = release_dict["tag_name"]
         version_github = tag
         # version_github = tag.split("v")[1]
-        verdata = RepTate._version.get_versions()
-        version_current = verdata["version"].split("+")[0]
+        version_current = RepTate.__version__
         items = version_current.split("v")
         if len(items) > 1:
             version_current = items[1]
@@ -663,16 +659,25 @@ class QApplicationManager(QMainWindow, Ui_MainWindow):
             # self.applications[old_name].name = new_tab_name
             # self.applications[new_tab_name] = self.applications.pop(old_name)
 
+    def _load_stylesheet(self):
+        """Load the application stylesheet for modern UI appearance."""
+        style_path = join(PATH, "styles", "reptate.qss")
+        if isfile(style_path):
+            try:
+                with open(style_path, "r", encoding="utf-8") as f:
+                    self.setStyleSheet(f.read())
+                    self.logger.debug("Loaded stylesheet from %s", style_path)
+            except Exception as e:
+                self.logger.warning("Could not load stylesheet: %s", e)
+
     def show_about(self):
         """Show about window"""
         from RepTate.gui.QAboutReptate import AboutWindow
 
-        # dlg = AboutWindow(self, self.version + ' ' + self.date)
         dlg = AboutWindow(
             self,
-            "RepTate %s %s" % (self.version, self.date),
-            'Build %s<br><small>\u00A9 Jorge Ramírez, Universidad Politécnica de Madrid<br>\u00A9 Victor Boudara, University of Leeds</small><br>(2017-2023)<br><a href="https://dx.doi.org/10.1122/8.0000002">Cite RepTate</a>'
-            % self.build,
+            "RepTate %s" % RepTate.__version__,
+            '<small>\u00A9 Jorge Ramírez, Universidad Politécnica de Madrid<br>\u00A9 Victor Boudara, University of Leeds</small><br>(2017-2023)<br><a href="https://dx.doi.org/10.1122/8.0000002">Cite RepTate</a>',
         )
         dlg.show()
 
@@ -1076,16 +1081,12 @@ class QApplicationManager(QMainWindow, Ui_MainWindow):
             apps_dic[app.name] = app_dic
 
         current_app_indx = self.ApplicationtabWidget.currentIndex()
-        verdata = RepTate._version.get_versions()
-        version_current = verdata["version"].split("+")[0]
-        date = verdata["date"].split("T")[0]
-        build = verdata["version"]
 
         out = dict(
             [
                 (
                     "RepTate_version",
-                    version_current + "_" + date + " (build %s)" % build,
+                    RepTate.__version__,
                 ),
                 (
                     "project_saved_at",

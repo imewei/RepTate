@@ -445,17 +445,7 @@ class TheoryGoPolyStrand(QTheory):
 
         with open(fpath, "w") as f:
             header = "#flowGen input\n"
-
-            verdata = RepTate._version.get_versions()
-            version = verdata["version"].split("+")[0]
-            date = verdata["date"].split("T")[0]
-            build = verdata["version"]
-
-            header += "# Generated with RepTate %s %s (build %s)\n" % (
-                version,
-                date,
-                build,
-            )
+            header += "# Generated with RepTate %s\n" % RepTate.__version__
             header += "# At %s on %s\n" % (
                 time.strftime("%X"),
                 time.strftime("%a %b %d, %Y"),
