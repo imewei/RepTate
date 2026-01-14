@@ -209,19 +209,28 @@ class TestRunNlsqFit:
 
         assert result.warm_start == result.parameters
 
-    def test_large_dataset_raises_error(self) -> None:
-        """Test error for dataset exceeding 1M points."""
+    def test_workflow_parameter_accepted(self) -> None:
+        """Test workflow parameter is accepted for memory-aware optimization."""
         from RepTate.core.fitting.nlsq_fit import run_nlsq_fit
 
-        # Create dataset > 1M points
-        xdata = jnp.zeros(1_000_001)
-        ydata = jnp.zeros(1_000_001)
+        xdata = jnp.linspace(0, 1, 50)
+        ydata = 2.0 * xdata + 1.0
 
-        def simple_model(x: Array, params: Array) -> Array:
-            return params[0] * x
+        def linear_model(x: Array, params: Array) -> Array:
+            return params[0] * x + params[1]
 
-        with pytest.raises(ValueError, match="too large"):
-            run_nlsq_fit(simple_model, xdata, ydata)
+        # Test with explicit workflow parameter
+        result, diagnostics = run_nlsq_fit(
+            linear_model,
+            xdata,
+            ydata,
+            p0=jnp.array([1.0, 0.0]),
+            workflow="auto",
+            show_progress=False,
+        )
+
+        assert abs(result.parameters["p0"] - 2.0) < 1e-5
+        assert diagnostics.status == "success"
 
     def test_fit_with_bounds(self) -> None:
         """Test fitting with parameter bounds."""

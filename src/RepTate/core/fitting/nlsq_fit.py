@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Callable
+from typing import Callable, Literal
 
 import jax.numpy as jnp
 
-from RepTate.core.fitting.nlsq_optimize import curve_fit
+from RepTate.core.fitting.nlsq_optimize import fit
 from RepTate.core.io.datasets import DatasetPayload, export_dataset
 
 
@@ -67,11 +67,14 @@ def run_nlsq_fit(
     *,
     p0: jnp.ndarray | None = None,
     bounds: tuple[float, float] = (-jnp.inf, jnp.inf),
+    workflow: Literal["auto", "auto_global", "hpc"] | None = "auto",
+    show_progress: bool = False,
 ) -> tuple[FitResult, FitDiagnostics]:
     """Execute deterministic nonlinear least-squares fit using NLSQ.
 
     Fits a nonlinear model to data by minimizing the sum of squared residuals.
-    Uses the NLSQ library for automatic differentiation and trust-region optimization.
+    Uses the NLSQ library for automatic differentiation and trust-region optimization
+    with workflow-based memory management for automatic handling of large datasets.
 
     Args:
         model_fn: Callable taking (xdata, parameters) and returning model predictions.
@@ -81,21 +84,21 @@ def run_nlsq_fit(
         p0: Initial parameter guess. If None, NLSQ will use zeros or heuristics.
         bounds: Parameter bounds as (lower, upper). Can be scalars (applied to all
             parameters) or arrays matching parameter shape. Default is unbounded.
+        workflow: Memory management strategy. One of:
+            - "auto" (default): Memory-aware local optimization with automatic
+              chunking/streaming for large datasets.
+            - "auto_global": Memory-aware global optimization (requires bounds).
+            - "hpc": Global optimization with checkpointing for HPC environments.
+        show_progress: Display progress bar for large dataset operations.
 
     Returns:
         tuple[FitResult, FitDiagnostics]: A tuple containing:
             - FitResult with parameter estimates, covariance, and residuals
             - FitDiagnostics with convergence status
-
-    Raises:
-        ValueError: If ydata contains more than 1,000,000 points (too large for
-            in-memory deterministic fitting).
     """
-    if ydata.size > 1_000_000:
-        raise ValueError("Dataset too large for deterministic fitting in-memory.")
 
     def curve_model(x, *params):
-        """Adapter function to unpack variadic parameters for curve_fit.
+        """Adapter function to unpack variadic parameters for fit.
 
         Args:
             x: Independent variable array.
@@ -106,7 +109,15 @@ def run_nlsq_fit(
         """
         return model_fn(x, jnp.asarray(params))
 
-    popt, pcov = curve_fit(curve_model, xdata, ydata, p0=p0, bounds=bounds)
+    popt, pcov = fit(
+        curve_model,
+        xdata,
+        ydata,
+        p0=p0,
+        bounds=bounds,
+        workflow=workflow,
+        show_progress=show_progress,
+    )
     residuals = jnp.asarray(ydata - model_fn(xdata, jnp.asarray(popt)))
     parameters = {f"p{i}": float(val) for i, val in enumerate(popt)}
     result = FitResult(

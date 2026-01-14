@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Callable, Iterable, NoReturn
+from typing import Any, Callable, Iterable, Literal, NoReturn
 
 import jax.numpy as jnp
 import nlsq
@@ -42,6 +42,120 @@ def curve_fit(*args: Any, **kwargs: Any) -> tuple[Array, Array]:
             - pcov: Estimated covariance matrix of parameters as a JAX array
     """
     result = nlsq.curve_fit(*args, **kwargs)
+    if isinstance(result, tuple):
+        return result
+    return result.popt, result.pcov
+
+
+def fit(
+    f: Callable[..., Any],
+    xdata: Any,
+    ydata: Any,
+    p0: Any | None = None,
+    sigma: Any | None = None,
+    absolute_sigma: bool = False,
+    bounds: tuple[Any, Any] = (-jnp.inf, jnp.inf),
+    *,
+    workflow: Literal["auto", "auto_global", "hpc"] | None = "auto",
+    method: str | None = None,
+    memory_limit_gb: float | None = None,
+    size_threshold: int = 1_000_000,
+    show_progress: bool = False,
+    chunk_size: int | None = None,
+    multistart: bool | None = None,
+    n_starts: int | None = None,
+    sampler: Literal["lhs", "sobol", "halton"] = "lhs",
+    center_on_p0: bool = True,
+    scale_factor: float = 1.0,
+    **kwargs: Any,
+) -> tuple[Array, Array]:
+    """Unified curve fitting with workflow-based memory management.
+
+    Wrapper around nlsq.fit() providing automatic strategy selection based on
+    dataset size and available memory. This is the recommended entry point for
+    curve fitting with large datasets.
+
+    Workflows:
+        - "auto" (default): Memory-aware local optimization. Automatically selects
+          between standard, chunked, or streaming processing based on dataset size
+          and available memory. Bounds are optional.
+        - "auto_global": Memory-aware global optimization using multi-start or
+          CMA-ES. Requires bounds. Auto-selects CMA-ES when parameter scale ratio
+          exceeds 1000.
+        - "hpc": Global optimization with checkpointing for HPC environments.
+          Requires bounds. Use with `checkpoint_dir` kwarg for fault tolerance.
+
+    Args:
+        f: Model function f(x, *params) -> y. Must use jax.numpy operations for
+            GPU acceleration and automatic differentiation.
+        xdata: Independent variable data.
+        ydata: Dependent variable data to fit.
+        p0: Initial parameter guess. If None, uses heuristics.
+        sigma: Uncertainties in ydata for weighted fitting.
+        absolute_sigma: If True, sigma represents absolute uncertainties.
+        bounds: Parameter bounds as (lower, upper). Required for "auto_global"
+            and "hpc" workflows.
+        workflow: Memory management strategy. One of "auto", "auto_global", "hpc".
+        method: Optimization algorithm ("trf", "lm", or None for auto).
+        memory_limit_gb: Maximum memory usage in GB. If None, auto-detects.
+        size_threshold: Dataset size threshold for large dataset processing.
+            Default 1,000,000 points.
+        show_progress: Display progress bar for long operations.
+        chunk_size: Override automatic chunk size calculation.
+        multistart: Enable multi-start optimization. Default None (auto).
+        n_starts: Number of starting points for multi-start. Default None (10).
+        sampler: Sampling strategy for multi-start ("lhs", "sobol", "halton").
+        center_on_p0: Center multi-start samples around p0.
+        scale_factor: Scale factor for exploration region.
+        **kwargs: Additional optimization parameters (ftol, xtol, gtol, max_nfev).
+
+    Returns:
+        tuple[Array, Array]: A tuple containing:
+            - popt: Optimal parameter values as a JAX array
+            - pcov: Estimated covariance matrix of parameters as a JAX array
+
+    Examples:
+        Basic usage with automatic memory management:
+
+        >>> from RepTate.core.fitting.nlsq_optimize import fit
+        >>> import jax.numpy as jnp
+        >>> def model(x, a, b): return a * jnp.exp(-b * x)
+        >>> popt, pcov = fit(model, xdata, ydata, p0=[1.0, 0.5])
+
+        Large dataset with progress bar:
+
+        >>> popt, pcov = fit(model, big_xdata, big_ydata, show_progress=True)
+
+        Global optimization for multi-modal problems:
+
+        >>> popt, pcov = fit(
+        ...     model, xdata, ydata,
+        ...     workflow="auto_global",
+        ...     bounds=([0, 0], [10, 5]),
+        ...     n_starts=20,
+        ... )
+    """
+    result = nlsq.fit(
+        f,
+        xdata,
+        ydata,
+        p0=p0,
+        sigma=sigma,
+        absolute_sigma=absolute_sigma,
+        bounds=bounds,
+        workflow=workflow,
+        method=method,
+        memory_limit_gb=memory_limit_gb,
+        size_threshold=size_threshold,
+        show_progress=show_progress,
+        chunk_size=chunk_size,
+        multistart=multistart,
+        n_starts=n_starts,
+        sampler=sampler,
+        center_on_p0=center_on_p0,
+        scale_factor=scale_factor,
+        **kwargs,
+    )
     if isinstance(result, tuple):
         return result
     return result.popt, result.pcov

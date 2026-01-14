@@ -46,7 +46,7 @@ dependencies = [
     "optimistix>=0.0.6",
 
     # Curve fitting (JAX-based)
-    "nlsq>=0.4.1",
+    "nlsq>=0.6.4",
 
     # Bayesian inference and diagnostics
     "numpyro>=0.14.0",
