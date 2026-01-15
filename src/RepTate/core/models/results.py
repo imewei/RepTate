@@ -4,7 +4,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from RepTate.core.inference.diagnostics import (
+        ConvergenceDiagnostics,
+        ReproducibilityInfo,
+    )
 
 
 @dataclass(frozen=True)
@@ -103,8 +109,13 @@ class PosteriorResultRecord:
             resuming interrupted sampling runs.
         status: String indicating sampling status (e.g., 'completed', 'running',
             'failed', 'diverged').
+        diagnostics: MCMC convergence diagnostics (R-hat, ESS, divergences).
+            None for legacy records created before this field was added.
+        reproducibility_info: Metadata for reproducing this inference run
+            (seed, versions, config). None for legacy records.
         created_at: ISO 8601 timestamp of when the sampling was created.
     """
+
     result_id: str
     fit_result_id: str
     sample_traces: dict[str, list[float]]
@@ -112,4 +123,6 @@ class PosteriorResultRecord:
     chain_metadata: dict[str, Any]
     resume_state: dict[str, Any]
     status: str
+    diagnostics: ConvergenceDiagnostics | None = None
+    reproducibility_info: ReproducibilityInfo | None = None
     created_at: str = field(default_factory=lambda: datetime.utcnow().isoformat())

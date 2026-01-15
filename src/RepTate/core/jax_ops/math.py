@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import jax
 import jax.numpy as jnp
 
 
+@jax.jit
 def clamp(value: jnp.ndarray, lower: float, upper: float) -> jnp.ndarray:
     """Clamp values into the inclusive range [lower, upper].
 
@@ -19,6 +21,7 @@ def clamp(value: jnp.ndarray, lower: float, upper: float) -> jnp.ndarray:
     return jnp.clip(value, lower, upper)
 
 
+@jax.jit
 def safe_log(value: jnp.ndarray, *, min_value: float = 1e-12) -> jnp.ndarray:
     """Compute log with a floor to avoid invalid values.
 
@@ -34,6 +37,7 @@ def safe_log(value: jnp.ndarray, *, min_value: float = 1e-12) -> jnp.ndarray:
     return jnp.log(jnp.clip(value, min_value, None))
 
 
+@jax.jit
 def safe_divide(numerator: jnp.ndarray, denominator: jnp.ndarray) -> jnp.ndarray:
     """Divide with zeros mapped to inf using JAX semantics.
 
@@ -48,6 +52,7 @@ def safe_divide(numerator: jnp.ndarray, denominator: jnp.ndarray) -> jnp.ndarray
     return numerator / denominator
 
 
+@jax.jit
 def squared_error(observed: jnp.ndarray, predicted: jnp.ndarray) -> jnp.ndarray:
     """Compute squared residuals.
 

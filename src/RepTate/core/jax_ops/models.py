@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import jax
 import jax.numpy as jnp
 
 from RepTate.core.jax_ops.model_api import ModelKernel
@@ -22,8 +23,11 @@ def evaluate_model(kernel: ModelKernel, x: jnp.ndarray, params: dict[str, float]
     return kernel(x, params)
 
 
+@jax.jit
 def linear_kernel(x: jnp.ndarray, params: dict[str, float]) -> jnp.ndarray:
     """Simple linear kernel for testing and scaffolding.
+
+    JIT-compiled for optimal performance on repeated evaluations (FR-014).
 
     Args:
         x: Input data array (independent variable values).

@@ -4,6 +4,7 @@ Tests cover:
 - T086a: NumPyro NUTS warm-start workflow
 - T086b: NLSQ->NUTS warm-start produces valid posterior samples
 - T086c: NumPyro NUTS runs on CPU when GPU unavailable
+- T018: run_nuts_inference returns diagnostics and reproducibility_info
 
 These tests validate the Bayesian inference workflow using NumPyro NUTS
 with warm-start from NLSQ deterministic fit results.
@@ -274,3 +275,128 @@ class TestFPReorderingTolerance:
 
         # Should be within 1e-10 tolerance
         assert jnp.allclose(loop_results, vmap_results, atol=1e-10)
+
+
+class TestRunNutsInferenceDiagnostics:
+    """Test T018: run_nuts_inference returns diagnostics and reproducibility_info."""
+
+    @pytest.fixture
+    def fit_record(self, linear_data):
+        """Create a FitResultRecord for testing."""
+        from RepTate.core.models.results import FitResultRecord
+
+        x, y, true_params = linear_data
+        return FitResultRecord(
+            result_id="test-fit-001",
+            dataset_id="test-dataset-001",
+            model_id="linear",
+            parameter_estimates={"slope": 2.5, "intercept": 1.5},
+            diagnostics={"chi2": 0.25, "r2": 0.99},
+            residuals=[0.1, -0.05, 0.02],
+            execution_context={"optimizer": "nlsq"},
+            status="success",
+        )
+
+    def test_diagnostics_field_populated(self, linear_data, fit_record, rng_key):
+        """Test that diagnostics field is populated in PosteriorResultRecord."""
+        from RepTate.core.inference import ConvergenceDiagnostics, run_nuts_inference
+
+        x, y, _ = linear_data
+
+        def numpyro_model(x_obs=None, y_obs=None):
+            slope = numpyro.sample("slope", dist.Normal(2.5, 1.0))
+            intercept = numpyro.sample("intercept", dist.Normal(1.5, 1.0))
+            sigma = numpyro.sample("sigma", dist.HalfNormal(1.0))
+            mu = slope * x_obs + intercept
+            numpyro.sample("y", dist.Normal(mu, sigma), obs=y_obs)
+
+        result = run_nuts_inference(
+            numpyro_model,
+            fit_record=fit_record,
+            result_id="test-posterior-001",
+            rng_seed=42,
+            num_warmup=50,
+            num_samples=100,
+            model_kwargs={"x_obs": x, "y_obs": y},
+        )
+
+        # Verify diagnostics field is populated
+        assert result.diagnostics is not None
+        assert isinstance(result.diagnostics, ConvergenceDiagnostics)
+
+        # Verify R-hat contains sampled parameters
+        assert "slope" in result.diagnostics.r_hat
+        assert "intercept" in result.diagnostics.r_hat
+        assert "sigma" in result.diagnostics.r_hat
+
+        # Verify ESS contains sampled parameters
+        assert "slope" in result.diagnostics.ess_bulk
+        assert "intercept" in result.diagnostics.ess_bulk
+
+        # Verify divergences is tracked
+        assert isinstance(result.diagnostics.divergences, int)
+        assert result.diagnostics.divergences >= 0
+
+    def test_reproducibility_info_field_populated(self, linear_data, fit_record, rng_key):
+        """Test that reproducibility_info field is populated."""
+        from RepTate.core.inference import ReproducibilityInfo, run_nuts_inference
+
+        x, y, _ = linear_data
+
+        def numpyro_model(x_obs=None, y_obs=None):
+            slope = numpyro.sample("slope", dist.Normal(2.5, 1.0))
+            intercept = numpyro.sample("intercept", dist.Normal(1.5, 1.0))
+            sigma = numpyro.sample("sigma", dist.HalfNormal(1.0))
+            mu = slope * x_obs + intercept
+            numpyro.sample("y", dist.Normal(mu, sigma), obs=y_obs)
+
+        result = run_nuts_inference(
+            numpyro_model,
+            fit_record=fit_record,
+            result_id="test-posterior-002",
+            rng_seed=12345,
+            num_warmup=50,
+            num_samples=100,
+            model_kwargs={"x_obs": x, "y_obs": y},
+        )
+
+        # Verify reproducibility_info field is populated
+        assert result.reproducibility_info is not None
+        assert isinstance(result.reproducibility_info, ReproducibilityInfo)
+
+        # Verify seed is recorded
+        assert result.reproducibility_info.rng_seed == 12345
+
+        # Verify versions are recorded
+        assert len(result.reproducibility_info.jax_version) > 0
+        assert len(result.reproducibility_info.numpyro_version) > 0
+        assert len(result.reproducibility_info.reptate_version) > 0
+
+        # Verify model config is captured
+        assert "x_obs" in str(result.reproducibility_info.model_config) or \
+               result.reproducibility_info.model_config is not None
+
+    def test_status_is_completed_for_good_run(self, linear_data, fit_record, rng_key):
+        """Test that status is 'completed' for a successful run."""
+        from RepTate.core.inference import run_nuts_inference
+
+        x, y, _ = linear_data
+
+        def numpyro_model(x_obs=None, y_obs=None):
+            slope = numpyro.sample("slope", dist.Normal(2.5, 1.0))
+            intercept = numpyro.sample("intercept", dist.Normal(1.5, 1.0))
+            sigma = numpyro.sample("sigma", dist.HalfNormal(1.0))
+            mu = slope * x_obs + intercept
+            numpyro.sample("y", dist.Normal(mu, sigma), obs=y_obs)
+
+        result = run_nuts_inference(
+            numpyro_model,
+            fit_record=fit_record,
+            result_id="test-posterior-003",
+            rng_seed=42,
+            num_warmup=50,
+            num_samples=100,
+            model_kwargs={"x_obs": x, "y_obs": y},
+        )
+
+        assert result.status == "completed"

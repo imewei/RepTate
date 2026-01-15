@@ -1,9 +1,68 @@
 """Lightweight ODE helpers for deterministic integration."""
 from __future__ import annotations
 
+from functools import partial
 from typing import Callable, Optional, Sequence
 
+import jax
+import jax.numpy as jnp
 import numpy as np
+
+
+@jax.jit
+def rk4_step_jax(
+    y: jnp.ndarray, t: float, dt: float, deriv: Callable[[jnp.ndarray, float], jnp.ndarray]
+) -> jnp.ndarray:
+    """Single RK4 step using JAX arrays.
+
+    JIT-compiled for optimal performance during integration (FR-014).
+
+    Args:
+        y: Current state vector.
+        t: Current time.
+        dt: Time step size.
+        deriv: Derivative function f(y, t) returning dy/dt.
+
+    Returns:
+        jnp.ndarray: State vector at t + dt.
+    """
+    k1 = deriv(y, t)
+    k2 = deriv(y + 0.5 * dt * k1, t + 0.5 * dt)
+    k3 = deriv(y + 0.5 * dt * k2, t + 0.5 * dt)
+    k4 = deriv(y + dt * k3, t + dt)
+    return y + (dt / 6.0) * (k1 + 2.0 * k2 + 2.0 * k3 + k4)
+
+
+def rk4_integrate_jax(
+    deriv: Callable[[jnp.ndarray, float], jnp.ndarray],
+    y0: jnp.ndarray,
+    t: jnp.ndarray,
+) -> jnp.ndarray:
+    """JAX-based RK4 integrator using scan for efficient compilation.
+
+    JIT-compilable version of RK4 integration using JAX primitives.
+
+    Args:
+        deriv: Derivative function f(y, t) returning dy/dt. Must be JAX-traceable.
+        y0: Initial state vector.
+        t: Time points for integration (1D array).
+
+    Returns:
+        jnp.ndarray: Solution array with shape (len(t), len(y0)).
+    """
+
+    def step(
+        carry: tuple[jnp.ndarray, jnp.ndarray], x: jnp.ndarray
+    ) -> tuple[tuple[jnp.ndarray, jnp.ndarray], jnp.ndarray]:
+        y, t_prev = carry
+        t_curr = x
+        dt = t_curr - t_prev
+        y_new = rk4_step_jax(y, t_prev, dt, deriv)
+        return (y_new, t_curr), y_new
+
+    y0_arr = jnp.atleast_1d(y0)
+    _, ys = jax.lax.scan(step, (y0_arr, t[0]), t[1:])
+    return jnp.vstack([y0_arr[None, :], ys])
 
 
 def rk4_integrate(

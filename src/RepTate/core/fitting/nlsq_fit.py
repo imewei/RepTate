@@ -2,13 +2,17 @@
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from typing import Callable, Literal
 
+import jax
 import jax.numpy as jnp
 
 from RepTate.core.fitting.nlsq_optimize import fit
 from RepTate.core.io.datasets import DatasetPayload, export_dataset
+
+logger = logging.getLogger("RepTate")
 
 
 @dataclass(frozen=True)
@@ -97,7 +101,16 @@ def run_nlsq_fit(
             - FitDiagnostics with convergence status
     """
 
-    def curve_model(x, *params):
+    # JIT-compile the model function for optimal performance (FR-013)
+    jit_model_fn: Callable[[jnp.ndarray, jnp.ndarray], jnp.ndarray]
+    try:
+        jit_model_fn = jax.jit(model_fn)
+    except Exception as e:
+        # Fallback to non-JIT if compilation fails (edge case handling)
+        logger.warning(f"JIT compilation failed, using non-JIT fallback: {e}")
+        jit_model_fn = model_fn
+
+    def curve_model(x: jnp.ndarray, *params: float) -> jnp.ndarray:
         """Adapter function to unpack variadic parameters for fit.
 
         Args:
@@ -107,17 +120,33 @@ def run_nlsq_fit(
         Returns:
             jnp.ndarray: Model predictions at x with given parameters.
         """
-        return model_fn(x, jnp.asarray(params))
+        return jit_model_fn(x, jnp.asarray(params))
 
-    popt, pcov = fit(
-        curve_model,
-        xdata,
-        ydata,
-        p0=p0,
-        bounds=bounds,
-        workflow=workflow,
-        show_progress=show_progress,
-    )
+    # Run fit with GPU memory exhaustion fallback to CPU (T029a)
+    try:
+        popt, pcov = fit(
+            curve_model,
+            xdata,
+            ydata,
+            p0=p0,
+            bounds=bounds,
+            workflow=workflow,
+            show_progress=show_progress,
+        )
+    except (jax.errors.XlaRuntimeError, MemoryError) as e:
+        # GPU memory exhaustion - fallback to CPU
+        logger.info(f"GPU memory exhaustion detected, falling back to CPU: {e}")
+        with jax.default_device(jax.devices("cpu")[0]):
+            popt, pcov = fit(
+                curve_model,
+                xdata,
+                ydata,
+                p0=p0,
+                bounds=bounds,
+                workflow=workflow,
+                show_progress=show_progress,
+            )
+
     residuals = jnp.asarray(ydata - model_fn(xdata, jnp.asarray(popt)))
     parameters = {f"p{i}": float(val) for i, val in enumerate(popt)}
     result = FitResult(

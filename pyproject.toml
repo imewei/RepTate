@@ -52,6 +52,9 @@ dependencies = [
     "numpyro>=0.14.0",
     "arviz>=0.18.0",
 
+    # Gradient-based optimizers (JAX ecosystem)
+    "optax>=0.2.0",
+
     # Interpolation helpers (JAX-native)
     "interpax",
 
@@ -125,6 +128,34 @@ tag_regex = "^v(?P<version>\\d+\\.\\d+\\.\\d+)$"
 python_version = "3.12"
 warn_unused_ignores = true
 ignore_missing_imports = true
+
+# Strict mode for core modules (FR-018)
+[[tool.mypy.overrides]]
+module = "RepTate.core.inference.*"
+strict = true
+disallow_untyped_defs = true
+disallow_any_generics = true
+warn_return_any = true
+
+[[tool.mypy.overrides]]
+module = "RepTate.core.fitting.*"
+strict = true
+disallow_untyped_defs = true
+
+[[tool.mypy.overrides]]
+module = "RepTate.core.jax_ops.*"
+strict = true
+disallow_untyped_defs = true
+
+[[tool.mypy.overrides]]
+module = "RepTate.core.models.*"
+strict = true
+disallow_untyped_defs = true
+
+# Gradual adoption for GUI (not strict)
+[[tool.mypy.overrides]]
+module = "RepTate.gui.*"
+disallow_untyped_defs = false
 
 # Pytest Configuration
 # ====================

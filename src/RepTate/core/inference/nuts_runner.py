@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Any, Callable
 
 import jax
@@ -9,8 +10,14 @@ import jax.numpy as jnp
 import numpyro
 from numpyro.infer import MCMC, NUTS
 
+from RepTate.core.inference.diagnostics import (
+    collect_reproducibility_info,
+    compute_diagnostics,
+)
 from RepTate.core.inference.warm_start import prepare_warm_start
 from RepTate.core.models.results import FitResultRecord, PosteriorResultRecord
+
+logger = logging.getLogger("RepTate")
 
 
 def run_nuts_inference(
@@ -58,6 +65,28 @@ def run_nuts_inference(
     mcmc.run(rng_key, **(model_kwargs or {}))
     samples = mcmc.get_samples(group_by_chain=True)
     summary = summarize_samples(samples)
+
+    # Compute convergence diagnostics (FR-001 through FR-006)
+    diagnostics = compute_diagnostics(mcmc)
+
+    # Collect reproducibility metadata (FR-008 through FR-012)
+    reproducibility_info = collect_reproducibility_info(
+        rng_seed=rng_seed,
+        model_config=model_kwargs,
+    )
+
+    # Determine status based on diagnostics (FR-007a)
+    # If 100% of samples are divergent, set status to "failed"
+    total_samples = num_samples
+    if diagnostics.divergences >= total_samples and total_samples > 0:
+        status = "failed"
+        logger.critical(
+            f"All {diagnostics.divergences} samples diverged. "
+            "Posterior estimates are unreliable."
+        )
+    else:
+        status = "completed"
+
     return PosteriorResultRecord(
         result_id=result_id,
         fit_result_id=fit_record.result_id,
@@ -69,7 +98,9 @@ def run_nuts_inference(
             "num_chains": samples[next(iter(samples))].shape[0],
         },
         resume_state={"warm_start": warm_start},
-        status="completed",
+        status=status,
+        diagnostics=diagnostics,
+        reproducibility_info=reproducibility_info,
     )
 
 
