@@ -58,7 +58,8 @@ _SAFE_NUMPY_FUNCTIONS = {
     "arccosh": np.arccosh,
     "arctanh": np.arctanh,
     "around": np.around,
-    "round_": np.round_,
+    "round_": np.round,  # np.round_ removed in NumPy 2.0
+    "round": np.round,
     "rint": np.rint,
     "floor": np.floor,
     "ceil": np.ceil,
@@ -132,7 +133,7 @@ class ToolEvaluate(QTool):
         self.safe_dict["y"] = y
 
         # Find FILE PARAMETERS IN THE EXPRESSION
-        fparams = re.findall("\[(.*?)\]", xexpr)
+        fparams = re.findall(r"\[(.*?)\]", xexpr)
         for fp in fparams:
             if fp in file_parameters:
                 self.safe_dict[fp] = float(file_parameters[fp])
@@ -146,7 +147,7 @@ class ToolEvaluate(QTool):
                 self.safe_dict[fp] = 0.0
         xexpr = xexpr.replace("[", "").replace("]", "")
 
-        fparams = re.findall("\[(.*?)\]", yexpr)
+        fparams = re.findall(r"\[(.*?)\]", yexpr)
         for fp in fparams:
             if fp in file_parameters:
                 self.safe_dict[fp] = float(file_parameters[fp])

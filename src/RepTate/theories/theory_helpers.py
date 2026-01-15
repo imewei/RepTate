@@ -54,9 +54,9 @@ from PySide6.QtGui import QDoubleValidator
 from PySide6.QtCore import Qt
 from RepTate.gui.SpreadsheetWidget import SpreadsheetWidget
 
-"""
- _____                           
-| ____|_ __  _   _ _ __ ___  ___ 
+r"""
+ _____
+| ____|_ __  _   _ _ __ ___  ___
 |  _| | '_ \| | | | '_ ` _ \/ __|
 | |___| | | | |_| | | | | | \__ \
 |_____|_| |_|\__,_|_| |_| |_|___/
@@ -128,13 +128,13 @@ class SingleSpeciesMode(enum.Enum):
     with_single = 1
 
 
-"""
- ____  _       _                 
-|  _ \(_) __ _| | ___   __ _ ___ 
+r"""
+ ____  _       _
+|  _ \(_) __ _| | ___   __ _ ___
 | | | | |/ _` | |/ _ \ / _` / __|
 | |_| | | (_| | | (_) | (_| \__ \
 |____/|_|\__,_|_|\___/ \__, |___/
-                       |___/     
+                       |___/
 
 Diverse dialogs to set/get/edit Maxwell modes, volume fractions, etc
 """
@@ -397,9 +397,9 @@ class EditMWDDialog(QDialog):
             self.table.setItem(i, 1, QTableWidgetItem("1000"))
 
 
-"""
-  ___  _   _                   
- / _ \| |_| |__   ___ _ __ ___ 
+r"""
+  ___  _   _
+ / _ \| |_| |__   ___ _ __ ___
 | | | | __| '_ \ / _ \ '__/ __|
 | |_| | |_| | | |  __/ |  \__ \
  \___/ \__|_| |_|\___|_|  |___/

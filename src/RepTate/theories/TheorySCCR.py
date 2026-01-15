@@ -395,12 +395,12 @@ class TheorySCCR(QTheory):
 
         Symmetry pattern::
 
-             \  1 /  (j=i diagonal)
-              \  /
-             2 \/ 4
-               /\
-              /  \
-             /  3 \ (j=self.N-i diagonal)
+             \\  1 /  (j=i diagonal)
+              \\  /
+             2 \\/ 4
+               /\\
+              /  \\
+             /  3 \\ (j=self.N-i diagonal)
 
         Args:
             k (int): Component index (0=xx, 1=xy, 2=yy).

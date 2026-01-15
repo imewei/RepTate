@@ -53,7 +53,7 @@ class TheoryUCM(QTheory):
         \\boldsymbol \\sigma &= \\sum_{i=1}^n G_i \\boldsymbol A_i\\\\
         \\dfrac {\\mathrm D \\boldsymbol  A_i} {\\mathrm D t} &=  \\boldsymbol \\kappa \\cdot \\boldsymbol A_i
         + \\boldsymbol A_i\\cdot \\boldsymbol \\kappa ^T 
-         - \dfrac 1 {\\tau_i} (\\boldsymbol A_i - \\boldsymbol I)
+         - \\dfrac 1 {\\tau_i} (\\boldsymbol A_i - \\boldsymbol I)
     
     * **Functions**
         - Analytical solution in shear

@@ -55,7 +55,7 @@ if TYPE_CHECKING:
 if is_enabled('USE_SAFE_EVAL'):
     from RepTate.core.safe_eval import safe_eval_array, SafeArrayExpression
 
-"""
+r"""
              _                             _       _
  _ __   ___ | |_   _ _ __   ___  _ __ ___ (_) __ _| |
 | '_ \ / _ \| | | | | '_ \ / _ \| '_ ` _ \| |/ _` | |
@@ -191,7 +191,7 @@ class TheoryPolynomial(QTheory):
 
 
 
-"""
+r"""
  _ __   _____      _____ _ __  | | __ ___      __
 | '_ \ / _ \ \ /\ / / _ \ '__| | |/ _` \ \ /\ / /
 | |_) | (_) \ V  V /  __/ |    | | (_| |\ V  V /
@@ -244,7 +244,7 @@ class TheoryPowerLaw(QTheory):
 
 
 
-"""
+r"""
                                         _   _       _
   _____  ___ __   ___  _ __   ___ _ __ | |_(_) __ _| |
  / _ \ \/ / '_ \ / _ \| '_ \ / _ \ '_ \| __| |/ _` | |
@@ -298,7 +298,7 @@ class TheoryExponential(QTheory):
 
 
 
-"""
+r"""
  ____                                           _   _       _
 |___ \    _____  ___ __   ___  _ __   ___ _ __ | |_(_) __ _| |___
   __) |  / _ \ \/ / '_ \ / _ \| '_ \ / _ \ '_ \| __| |/ _` | / __|
@@ -367,7 +367,7 @@ class TheoryTwoExponentials(QTheory):
                 -tt.data[:, 0] / T2)
 
 
-"""
+r"""
        _            _               _
   __ _| | __ _  ___| |__  _ __ __ _(_) ___
  / _` | |/ _` |/ _ \ '_ \| '__/ _` | |/ __|
@@ -537,7 +537,7 @@ class TheoryAlgebraicExpression(QTheory):
         tt.data[:, 0] = ft.data[:, 0]
 
         expression = self.parameters["expression"].value
-        params = set(re.findall( "A\d{1,2}", expression))
+        params = set(re.findall(r"A\d{1,2}", expression))
         nparams=len(params)
         maxparamindex=-1;
         for p in params:
@@ -550,7 +550,7 @@ class TheoryAlgebraicExpression(QTheory):
             self.Qprint("<b><font color=red>Wrong expression or number of parameters</font></b>. Review your theory")
         else:
             # Find FILE PARAMETERS IN THE EXPRESSION
-            fparams = re.findall("\[(.*?)\]",expression)
+            fparams = re.findall(r"\[(.*?)\]", expression)
 
             # Build variable bindings
             bindings = {'x': tt.data[:, 0]}
