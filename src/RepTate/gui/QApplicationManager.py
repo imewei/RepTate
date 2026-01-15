@@ -82,6 +82,14 @@ if getattr(sys, "frozen", False):
     PATH = sys._MEIPASS
 else:
     PATH = dirname(abspath(__file__))
+
+# Import the compiled Qt resource module and make it available under the bare
+# name that loadUiType's generated code expects. The generated code does
+# 'import MainWindow_rc' which fails unless the module is in sys.modules.
+from RepTate.gui import MainWindow_rc
+
+sys.modules["MainWindow_rc"] = MainWindow_rc
+
 Ui_MainWindow, QMainWindow = loadUiType(join(PATH, "ReptateMainWindow.ui"))
 
 

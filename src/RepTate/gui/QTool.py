@@ -161,6 +161,7 @@ class QTool(QWidget, Ui_ToolTab):
         self.toolParamTable.setEditTriggers(QAbstractItemView.NoEditTriggers)
 
         self.toolTextBox.setReadOnly(True)
+        self.toolTextBox.setOpenExternalLinks(True)  # Enable clickable citation links
         self.toolTextBox.setContextMenuPolicy(Qt.CustomContextMenu)
         self.toolTextBox.customContextMenuRequested.connect(
             self.toolTextBox_context_menu

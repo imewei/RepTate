@@ -44,7 +44,7 @@ import logging
 
 from RepTate.core.CmdBase import CmdBase, CalcMode
 from RepTate.core.logging_config import setup_logging
-#from RepTate.gui.QApplicationManager import QApplicationManager
+from RepTate.gui.application_registry import get_extension_to_appname_map
 
 from PySide6.QtWidgets import QApplication
 #from PySide6.QtCore import Qt, QCoreApplication
@@ -179,7 +179,7 @@ def start_RepTate(argv):
     CmdBase.calcmode = (
         CalcMode.singlethread
     )  # avoid troubles when loading multiple apps/files/theories
-    d = {ex.extension: ex.appname for ex in list(ex.available_applications.values())}
+    d = get_extension_to_appname_map()  # extension -> app name mapping
     toolopen = False    
     for k in dictfiles.keys():
         if k == "rept":

@@ -18,21 +18,22 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-# Registry mapping application names to their module paths
-# Format: 'AppName': 'module.path.ClassName'
-_APPLICATION_REGISTRY: dict[str, str] = {
-    "MWD": "RepTate.applications.ApplicationMWD.ApplicationMWD",
-    "TTS": "RepTate.applications.ApplicationTTS.ApplicationTTS",
-    "TTSF": "RepTate.applications.ApplicationTTSFactors.ApplicationTTSFactors",
-    "LVE": "RepTate.applications.ApplicationLVE.ApplicationLVE",
-    "NLVE": "RepTate.applications.ApplicationNLVE.ApplicationNLVE",
-    "Crystal": "RepTate.applications.ApplicationCrystal.ApplicationCrystal",
-    "Gt": "RepTate.applications.ApplicationGt.ApplicationGt",
-    "Creep": "RepTate.applications.ApplicationCreep.ApplicationCreep",
-    "SANS": "RepTate.applications.ApplicationSANS.ApplicationSANS",
-    "React": "RepTate.applications.ApplicationReact.ApplicationReact",
-    "Dielectric": "RepTate.applications.ApplicationDielectric.ApplicationDielectric",
-    "LAOS": "RepTate.applications.ApplicationLAOS.ApplicationLAOS",
+# Registry mapping application names to their module paths and metadata
+# Format: 'AppName': {'module': 'module.path.ClassName', 'extensions': ['ext1', 'ext2']}
+# Note: First extension in list is the primary one
+_APPLICATION_REGISTRY: dict[str, dict[str, str | list[str]]] = {
+    "MWD": {"module": "RepTate.applications.ApplicationMWD.ApplicationMWD", "extensions": ["gpc"]},
+    "TTS": {"module": "RepTate.applications.ApplicationTTS.ApplicationTTS", "extensions": ["osc"]},
+    "TTSF": {"module": "RepTate.applications.ApplicationTTSFactors.ApplicationTTSFactors", "extensions": ["ttsf"]},
+    "LVE": {"module": "RepTate.applications.ApplicationLVE.ApplicationLVE", "extensions": ["tts"]},
+    "NLVE": {"module": "RepTate.applications.ApplicationNLVE.ApplicationNLVE", "extensions": ["shear", "uext"]},
+    "Crystal": {"module": "RepTate.applications.ApplicationCrystal.ApplicationCrystal", "extensions": ["shearxs", "uextxs"]},
+    "Gt": {"module": "RepTate.applications.ApplicationGt.ApplicationGt", "extensions": ["gt"]},
+    "Creep": {"module": "RepTate.applications.ApplicationCreep.ApplicationCreep", "extensions": ["creep"]},
+    "SANS": {"module": "RepTate.applications.ApplicationSANS.ApplicationSANS", "extensions": ["sans"]},
+    "React": {"module": "RepTate.applications.ApplicationReact.ApplicationReact", "extensions": ["reac"]},
+    "Dielectric": {"module": "RepTate.applications.ApplicationDielectric.ApplicationDielectric", "extensions": ["dls"]},
+    "LAOS": {"module": "RepTate.applications.ApplicationLAOS.ApplicationLAOS", "extensions": ["laos"]},
 }
 
 # Cache for loaded application classes
@@ -63,7 +64,7 @@ def get_application_class(name: str) -> type[Application]:
                 f"Unknown application '{name}'. Available applications: {available}"
             )
 
-        module_path = _APPLICATION_REGISTRY[name]
+        module_path = _APPLICATION_REGISTRY[name]["module"]
         module_name, class_name = module_path.rsplit(".", 1)
 
         logger.debug(f"Lazy loading application: {name} from {module_name}")
@@ -125,3 +126,19 @@ def clear_cache() -> None:
     Primarily useful for testing purposes.
     """
     _loaded_applications.clear()
+
+
+def get_extension_to_appname_map() -> dict[str, str]:
+    """Return a mapping of file extensions to application names.
+
+    This allows determining which application handles a file extension
+    without loading the application classes.
+
+    Returns:
+        Dict mapping extension strings to application names.
+    """
+    result = {}
+    for name, info in _APPLICATION_REGISTRY.items():
+        for ext in info["extensions"]:
+            result[ext] = name
+    return result
