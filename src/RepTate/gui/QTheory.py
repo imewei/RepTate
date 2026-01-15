@@ -1295,6 +1295,8 @@ class QTheory(QWidget, Ui_TheoryTab):
                 elif self.LSmethod == "lm":
                     self.Qprint("Method: Levenberg-Marquardt")
                 if self.LSmethod == "trf" or self.LSmethod == "dogbox":
+                    # NLSQ uses JAX autodiff for Jacobian; convert string jac to None
+                    jac_param = self.LSjac if callable(self.LSjac) else None
                     pars, pcov = curve_fit(
                         self.func_fit,
                         x,
@@ -1302,7 +1304,7 @@ class QTheory(QWidget, Ui_TheoryTab):
                         p0=initial_guess,
                         bounds=(self.param_min, self.param_max),
                         method=self.LSmethod,
-                        jac=self.LSjac,
+                        jac=jac_param,
                         ftol=self.LSftol,
                         xtol=self.LSxtol,
                         gtol=self.LSgtol,

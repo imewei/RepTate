@@ -334,8 +334,11 @@ class ApplicationGt(QApplicationWindow):
                 gamma = 1
         except:
             gamma = 1
-        x[:, 0] = np.log10(dt.data[:, 0])
-        y[:, 0] = np.log10(dt.data[:, 1] / gamma)
+        # Use np.where to safely handle zeros/negative values in log10
+        with np.errstate(divide='ignore', invalid='ignore'):
+            x[:, 0] = np.where(dt.data[:, 0] > 0, np.log10(dt.data[:, 0]), np.nan)
+            y_data = dt.data[:, 1] / gamma
+            y[:, 0] = np.where(y_data > 0, np.log10(y_data), np.nan)
         return x, y, True
 
     def viewSchwarzl_Gt(self, dt, file_parameters):
